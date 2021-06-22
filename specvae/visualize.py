@@ -170,6 +170,7 @@ def plot_precentile(arr_ref, arr_sim, num_bins=100,
         x_percentiles,
         ref_score_cum,
         color='black')
+    return ref_score_cum
 
 
 def plot_distribution(data, subject, xlabel, ylabel, plot_density=False):
