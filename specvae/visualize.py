@@ -11,11 +11,17 @@ def plot_spectra_grid(model, data_batch, dirpath='.', epoch=0, device=None, tran
     name = "%s_spec_%s" % (model.get_name(), epoch)
     x_batch = data_batch[0]
     data_batch2 = model(x_batch)
-    resolution, max_mz = model.resolution, model.max_mz
+    resolution, max_mz = 0.05, 2500.
+    if hasattr(model, 'resolution') and hasattr(model, 'max_mz'):
+        resolution, max_mz = model.resolution, model.max_mz
 
     if transform:
-        data_batch = transform(x_batch)
-        data_batch2 = transform(data_batch2)
+        db, db2 = [], []
+        for i, x in enumerate(x_batch):
+            db.append(transform(x_batch[i].data.cpu().numpy()))
+            db2.append(transform(data_batch2[i].data.cpu().numpy()))
+        data_batch = np.vstack(db)
+        data_batch2 = np.vstack(db2)
 
     if hasattr(model, 'lattice') and epoch % 5 == 0:
         plot_spectra_(model.lattice(grid=(17, 17), zrange=(-75, 75), device=device), grid=(17, 17), figsize=(34, 18),
@@ -78,6 +84,27 @@ def plot_spectra_compare(spectra1, spectra2, grid=(4, 3), figsize=(17, 9), filep
     else:
         plt.show()
     plt.close(fig)
+
+
+def plot_spectrum(spectrum, name='', filepath=None, resolution=0.05, max_mz=2500, structure=False, meta=None, ax=None, figsize=(5, 5)):
+    if isinstance(spectrum, str):
+        from specvae.dataset import ToDenseSpectrum, SplitSpectrum
+        spectrum = ToDenseSpectrum(resolution, max_mz)(SplitSpectrum()(spectrum))
+    mz = np.arange(0, max_mz, step=resolution)
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    title = name
+    if meta:
+        if 'collision energy' in meta:
+            title += ', E=' + str(meta['collision energy'])
+        if 'ionization mode' in meta:
+            title += ' (%s)' % ('+' if (meta['ionization mode'] == 'positive' or meta['ionization mode'] == 1) else '-')
+    ax.set_title(title)
+
+    ax.plot(mz, spectrum.tolist())
+    ax.set_ylim([0, 100])
+    ax.set_xlabel('m/z')
+    ax.set_ylabel('Intensity [%]')
 
 
 def plot_history(history, metric_name, filepath=None):
@@ -173,10 +200,10 @@ def plot_precentile(arr_ref, arr_sim, num_bins=100,
     return ref_score_cum
 
 
-def plot_distribution(data, subject, xlabel, ylabel, plot_density=False):
+def plot_distribution(data, subject, xlabel, ylabel, plot_density=False, bins=10):
     from sklearn.neighbors import KernelDensity
 
-    counts, bins = np.histogram(data, bins=10, density=True)
+    counts, bins = np.histogram(data, bins=bins, density=True)
     cc = counts / counts.sum()
     per = cc * 100.
     
@@ -192,13 +219,13 @@ def plot_distribution(data, subject, xlabel, ylabel, plot_density=False):
         ax.plot(xx, np.exp(log_dens) / counts.sum() * 100., linestyle='-', color='red', linewidth=2)
 
     # Ticks
-    xmajor_ticks = np.arange(0., 1.1, 0.1)
-    xminor_ticks = np.arange(0., 1.05, 0.05)
-    # ymajor_ticks = np.arange(0., 0.35, 0.05)
-    # yminor_ticks = np.arange(0., 0.35, 0.05)
+    # xmajor_ticks = np.arange(0., 1.1, 0.1)
+    # xminor_ticks = np.arange(0., 1.05, 0.05)
+    # # ymajor_ticks = np.arange(0., 0.35, 0.05)
+    # # yminor_ticks = np.arange(0., 0.35, 0.05)
 
-    ax.set_xticks(xmajor_ticks)
-    ax.set_xticks(xminor_ticks, minor=True)
+    # ax.set_xticks(xmajor_ticks)
+    # ax.set_xticks(xminor_ticks, minor=True)
     # ax.set_yticks(ymajor_ticks)
     # ax.set_yticks(minor_ticks, minor=True)
 

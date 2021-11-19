@@ -124,6 +124,81 @@ class VAEScore:
         return d
 
 
+import sklearn.metrics.pairwise as smp
+
+class VAEScoreAlt:
+    def __init__(self, model, max_num_peaks=300):
+        self.model = model
+        self.device = model.device
+        self.max_num_peaks = max_num_peaks
+
+    def _kl(self, mu_x, mu_y, logvar_x, logvar_y):
+        var_x, var_y = torch.exp(logvar_x), torch.exp(logvar_y)
+        var_y_inv = 1. / var_y
+        kl = 0.5 * torch.sum(logvar_y - logvar_x - 1 + 
+            (var_y_inv * var_x) + (torch.square(mu_y - mu_x) * var_y_inv), dim=1)
+        return kl
+
+    def spectrum2numpy(self, spectra, denormalize=False):
+        if len(spectra) == 0:
+            raise ValueError('List of spectra is empty')
+        # Convert only when list contains elements of type Spectrum:
+        if type(spectra[0]) is not Spectrum:
+            return spectra
+        tmp = self.model.transform(list(zip([1.],[1.])))
+        s = np.zeros((len(spectra), tmp.shape[0]), dtype=np.float32)
+        for i in range(len(spectra)):
+            mzs, ints = spectra[i].peaks.mz, spectra[i].peaks.intensities
+            s[i,:] = self.model.transform(list(zip(mzs,ints)))
+        return s
+        
+    def spectrum2tensor(self, spectra, denormalize=False, device=None):
+        if not torch.is_tensor(spectra):
+            spectra = torch.from_numpy(self.spectrum2numpy(spectra, denormalize))
+        if device:
+            spectra = spectra.to(device)
+        return spectra
+
+    def kl_divergence(self, x, y, relative=True, matrix=True, a=0.0005):
+        # Convert list of matchms.Spectrum to pytorch tensor
+        # TODO: optimize for symetric computation
+        x = self.spectrum2tensor(x, device=self.model.device)
+        y = self.spectrum2tensor(y, device=self.model.device)
+        mu_x, logvar_x = self.model.encode(x)
+        mu_y, logvar_y = self.model.encode(y)
+        if matrix:
+            xs, ys = x.shape[0], y.shape[0]
+            kl = np.zeros((xs, ys))
+            for i in range(xs):
+                mu_xi = mu_x[i].unsqueeze(0).repeat(ys, 1)
+                logvar_xi = logvar_x[i].unsqueeze(0).repeat(ys, 1)
+                kl[i,:] = self._kl(mu_xi, mu_y, logvar_xi, logvar_y).data.cpu().numpy()
+        else:
+            kl = self._kl(mu_x, mu_y, logvar_x, logvar_y).data.cpu().numpy()
+        kl = 1. / (1. + a*kl) if relative else kl
+        return kl
+
+    def euclidean(self, x, y, relative=True, matrix=True, a=0.05):
+        # Convert list of matchms.Spectrum to pytorch tensor
+        x = self.spectrum2tensor(x, device=self.model.device)
+        y = self.spectrum2tensor(y, device=self.model.device)
+        mu_true, logvar_true = self.model.encode(x)
+        mu_pred, logvar_pred = self.model.encode(y)
+        d = torch.cdist(mu_true, mu_pred, p=2.0) if matrix else torch.norm(mu_true - mu_pred, dim=1)
+        d = d.data.cpu().numpy()
+        d = 1. / (1. + a*d) if relative else d
+        return d
+
+    def cosine_similarity(self, x, y, relative=True, matrix=True):
+        # TODO: support one-to-one metric
+        x = self.spectrum2tensor(x, device=self.model.device)
+        y = self.spectrum2tensor(y, device=self.model.device)
+        mu_true, logvar_true = self.model.encode(x)
+        mu_pred, logvar_pred = self.model.encode(y)
+        cs = smp.cosine_similarity(x, y)
+        return cs
+
+
 def main(argc, argv):
     use_cuda = False
     cpu_device = torch.device('cpu')
@@ -136,7 +211,7 @@ def main(argc, argv):
 
     
     dataset = 'MoNA' # HMDB and MoNA
-    model_name = 'specvae_2500-500-50-500-2500 (20-06-2021_16-39-42)'
+    model_name = 'alt_specvae_800-400-30-400-800 (25-06-2021_16-44-15)'
     spec_max_mz = 2500
     batch_size = 100
 
@@ -155,33 +230,33 @@ def main(argc, argv):
     X1 = df_valid.apply(parse_spectrum, axis=1).values
 
     # cols = ['spectrum', 'ionization mode', 'collision_energy_new']
-    n_samples = 2 * batch_size # -1 if all
-    spec_resolution = 1
-    transform = tv.transforms.Compose([
-        dt.SplitSpectrum(),
-        dt.ToDenseSpectrum(resolution=spec_resolution, max_mz=spec_max_mz),
-        # datasets.Ion2Int(one_hot=True)
-    ])
+    # n_samples = 2 * batch_size # -1 if all
+    # spec_resolution = 1
+    # transform = tv.transforms.Compose([
+    #     dt.SplitSpectrum(),
+    #     dt.ToDenseSpectrum(resolution=spec_resolution, max_mz=spec_max_mz),
+    #     # datasets.Ion2Int(one_hot=True)
+    # ])
 
-    # Load and transform dataset:
-    # test_data = load_spectra_data(dataset, transform, n_samples, device, cols)
-    test_data = MoNA.preload_tensor(
-        device=device, data_frame=df_valid,
-        transform=transform, limit=n_samples)
-    if test_data is None:
-        print("No dataset specified, script terminates.")
+    # # Load and transform dataset:
+    # # test_data = load_spectra_data(dataset, transform, n_samples, device, cols)
+    # test_data = MoNA.preload_tensor(
+    #     device=device, data_frame=df_valid,
+    #     transform=transform, limit=n_samples)
+    # if test_data is None:
+    #     print("No dataset specified, script terminates.")
 
-    # Set data loaders:
-    test_loader = DataLoader(
-        dt.Spectra(data=test_data, device=device, columns=cols),
-        batch_size=batch_size,
-        shuffle=False
-    )
+    # # Set data loaders:
+    # test_loader = DataLoader(
+    #     dt.Spectra(data=test_data, device=device, columns=cols),
+    #     batch_size=batch_size,
+    #     shuffle=False
+    # )
 
-    it = iter(test_loader)
-    # spectrum_batch, mode_batch, energy_batch, id_batch = next(it)
-    X2 = next(it)[0]
-    y = next(it)[0]
+    # it = iter(test_loader)
+    # # spectrum_batch, mode_batch, energy_batch, id_batch = next(it)
+    # X2 = next(it)[0]
+    # y = next(it)[0]
 
     print("Load model: %s..." % model_name)
     model_path = utils.get_project_path() / '.model' / dataset / model_name / 'model.pth'
@@ -189,17 +264,18 @@ def main(argc, argv):
     model.eval()
 
     x1 = X1[:batch_size]
-    x2 = X2[:batch_size]
+    # x2 = X2[:batch_size]
 
-    score = VAEScore(model)
+    score = VAEScoreAlt(model, max_num_peaks=400)
     d1 = score.euclidean(x1, x1, relative=True)
     kl1 = score.kl_divergence(x1, x1, relative=True)
+    cs = score.cosine_similarity(x1, x1)
 
-    d2 = score.euclidean(x2, x2, relative=True)
-    kl2 = score.kl_divergence(x2, x2, relative=True)
+    # d2 = score.euclidean(x2, x2, relative=True)
+    # kl2 = score.kl_divergence(x2, x2, relative=True)
 
-    assert(np.allclose(d1, d2))
-    assert(np.allclose(kl1, kl2))
+    # assert(np.allclose(d1, d2))
+    # assert(np.allclose(kl1, kl2))
 
     return 0
 

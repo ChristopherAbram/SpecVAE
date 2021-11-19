@@ -1,12 +1,13 @@
 import numpy as np
 from collections import OrderedDict
-from numpy.lib import utils
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision as tv
 
-import train, utils
+
+from model import BaseModel
 
 
 class Lambda(nn.Module):
@@ -17,19 +18,13 @@ class Lambda(nn.Module):
     def forward(self, x):
         return self.lambd(x)
 
-
 class SampleZ(nn.Module):
-    def __init__(self, device=None):
-        super(SampleZ, self).__init__()
-        self.device = device
-
     def forward(self, x):
         mu, log_sigma = x
-        std = torch.exp(0.5 * log_sigma).to(self.device)
+        std = torch.exp(0.5 * log_sigma).to(mu.device)
         with torch.no_grad():
-            epsilon = torch.randn_like(std).to(self.device)
+            epsilon = torch.randn_like(std).to(mu.device)
         return mu + std * epsilon
-
 
 class ReLUlimit(nn.Module):
     def __init__(self, limit):
@@ -39,30 +34,80 @@ class ReLUlimit(nn.Module):
     def forward(self, x):
         return torch.clamp(x, min=0., max=self.limit)
 
+class GaussianNLLLoss(nn.Module):
+    def __init__(self, scale=1.0):
+        super().__init__()
+        self.scale = torch.Tensor([scale])
 
-class BaseVAE(nn.Module):
-    def __init__(self, device=None):
-        super(BaseVAE, self).__init__()
-        self.layer_config = None
-        self.device = device
-        self.name = 'vae'
+    def forward(self, input, target):
+        scale = self.scale.to(input.device)
+        dist = torch.distributions.Normal(target, scale)
+        log_p = dist.log_prob(input).to(input.device)
+        return -log_p.sum(dim=1)
 
-    def latent_dim(self):
-        return self.latent_dim
+class VAELoss(nn.Module):
+    def __init__(self, beta=1.0):
+        super().__init__()
+        self.beta = beta
 
-    def loss(self, y_true, y_pred, mu, log_var):
+    def forward(self, input, target, latent_dist):
+        loss, _, __ = self.forward_(input, target, latent_dist)
+        return loss
+
+    def forward_(self, input, target, latent_dist):
+        mean, logvar = latent_dist
         # E[log P(X|z)]
-        recon = torch.sum(F.binary_cross_entropy(y_pred, y_true.data, reduction='none'), dim=1)
+        recon = torch.sum(F.binary_cross_entropy(input, target, reduction='none'), dim=1).mean()
         # D_KL(Q(z|X) || P(z|X))
-        kld = 0.5 * torch.sum(
-            torch.exp(log_var) + torch.square(mu) - 1. - log_var, dim=1)
-        return (kld + recon).mean()
+        kld = self.beta * 0.5 * torch.sum(torch.exp(logvar) + torch.square(mean) - 1. - logvar, dim=1).mean()
+        loss = recon + kld
+        return loss, recon, kld
+
+class VAELossGaussian(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.gnll = nn.GaussianNLLLoss(reduction='mean')
+
+    def forward(self, input, target, latent_dist):
+        loss, _, __ = self.forward_(input, target, latent_dist)
+        return loss
+
+    def forward_(self, input, target, latent_dist):
+        mean, logvar = latent_dist
+        # E[log P(X|z)]
+        var = torch.ones(input.shape[0], 1, requires_grad=True).to(input.device)
+        recon = self.gnll(input, target, var)
+        # D_KL(Q(z|X) || P(z|X))
+        kld = (0.5 * torch.sum(torch.exp(logvar) + torch.square(mean) - 1. - logvar, dim=1)).mean()
+        loss = recon + kld
+        return loss, recon, kld
+
+class BaseVAE(BaseModel):
+    def __init__(self, config, device=None):
+        super(BaseVAE, self).__init__(config, device)
+        self.name = self.get_attribute('name', required=False, default='vae')
+
+    def build_layers(self):
+        self.encoder = None
+        self.fc_mean = None
+        self.fc_logvar = None
+        self.decoder = None
+        self.loss = None
+        raise NotImplementedError("Build model method 'build_layers' is not implemented")
+
+    def reparameterize(self, latent_dist):
+        mean, logvar = latent_dist
+        if self.training:
+            z = self.sample(latent_dist)
+        else:
+            z = mean
+        return z
 
     def encode(self, x):
-        x = self.encoder_(x)
-        mu = F.relu(self.en_mu(x))
-        log_var = F.relu(self.en_log_var(x))
-        return mu, log_var
+        x = self.encoder(x)
+        mu = self.fc_mean(x)
+        logvar = self.fc_logvar(x)
+        return mu, logvar
 
     def decode(self, z):
         return self.decoder(z)
@@ -72,58 +117,28 @@ class BaseVAE(nn.Module):
         return x
 
     def forward_(self, x):
-        mu, log_var = self.encode(x)
-        z = self.sample([mu, log_var])
+        latent_dist = self.encode(x)
+        z = self.reparameterize(latent_dist)
         x = self.decode(z)
-        return x, mu, log_var
+        return x, z, latent_dist
 
     def get_layer_string(self):
         layers = self.layer_config
         layer_string = '-'.join(str(x) for x in layers[0]) + '-' + '-'.join(str(x) for x in np.array(layers[1])[1:])
         return layer_string
 
-    def get_name(self):
-        return self.name
-
-    def save(self, path):
-        torch.save(self, path)
-
-    @staticmethod
-    def load(path, device=None):
-        if device:
-            model = torch.load(path, map_location=device)
-        else:
-            model = torch.load(path)
-        model.device = device
-        model.eval()
-        return model
-
-
 class SpecVEA(BaseVAE):
     def __init__(self, config, device=None):
-        super(SpecVEA, self).__init__(device)
-        self.name = 'specvae'
-        self.trainer = None
-        
-        # Extract model parameters:
-        if 'resolution' in config:
-            self.resolution = config['resolution']
-        else:
-            raise ValueError('resolution parameter missing')
-        if 'max_mz' in config:
-            self.max_mz = config['max_mz']
-        else:
-            raise ValueError('max_mz parameter missing')
-        
-        if 'layer_config' in config:
-            self.layer_config = config['layer_config']
-        else:
-            raise ValueError('layer_config parameter missing')
+        super(SpecVEA, self).__init__(config, device)
+        self.name = self.get_attribute('name', required=False, default='specvae')
+        self.beta = self.get_attribute('beta', required=False, default=1.0)
+        self.build_layers()
+        if self.device:
+            self.to(self.device)
 
-        # self.modcossim = metrics.ModifiedCosine(self.resolution, self.max_mz)
-        
+    def build_layers(self):
         # Build model layers
-        self.layer_config = config['layer_config']
+        self.layer_config = self.config['layer_config']
         self.encoder_layer_config = self.layer_config[0]
         self.decoder_layer_config = self.layer_config[1]
 
@@ -135,17 +150,17 @@ class SpecVEA(BaseVAE):
             encoder_layers.append(('en_lin_%d' % i, nn.Linear(in_dim, out_dim)))
             encoder_layers.append(('en_lin_batchnorm_%d' % i, nn.BatchNorm1d(out_dim)))
             encoder_layers.append(('en_act_%d' % i, nn.ReLU()))
-        self.encoder_ = nn.Sequential(OrderedDict(encoder_layers))
+        self.encoder = nn.Sequential(OrderedDict(encoder_layers))
 
         # Latent space layer (mu & log_var):
         in_dim, out_dim = \
             self.encoder_layer_config[encoder_layers_num - 2], \
             self.encoder_layer_config[encoder_layers_num - 1]
         self.latent_dim = out_dim
-        self.en_mu = nn.Linear(in_dim, out_dim)
-        self.en_mu_batchnorm = nn.BatchNorm1d(out_dim)
-        self.en_log_var = nn.Linear(in_dim, out_dim)
-        self.en_log_var_batchnorm = nn.BatchNorm1d(out_dim)
+        self.fc_mean = nn.Linear(in_dim, out_dim)
+        self.mean_batchnorm = nn.BatchNorm1d(out_dim)
+        self.fc_logvar = nn.Linear(in_dim, out_dim)
+        self.logvar_batchnorm = nn.BatchNorm1d(out_dim)
 
         # Sample from N(0., 1.)
         self.sample = SampleZ()
@@ -164,32 +179,299 @@ class SpecVEA(BaseVAE):
             self.decoder_layer_config[decoder_layers_num - 2], \
             self.decoder_layer_config[decoder_layers_num - 1]
         decoder_layers.append(('de_lin_%d' % (decoder_layers_num - 1), nn.Linear(in_dim, out_dim)))
-        decoder_layers.append(('de_act_%d' % (decoder_layers_num - 1), ReLUlimit(100.)))
-        
+        decoder_layers.append(('de_act_%d' % (decoder_layers_num - 1), nn.Sigmoid()))
         self.decoder = nn.Sequential(OrderedDict(decoder_layers))
 
+        # Loss:
+        self.loss = VAELoss(self.beta)
+
+    def encode(self, x):
+        x = self.encoder(x)
+        mu = self.mean_batchnorm(self.fc_mean(x))
+        log_var = self.logvar_batchnorm(self.fc_logvar(x))
+        return mu, log_var
+
+class SpecGaussianVAE(BaseVAE):
+    def __init__(self, config, device=None):
+        super(SpecGaussianVAE, self).__init__(config, device)
+        self.name = self.get_attribute('name', required=False, default='specgvae')
+        self.limit = self.get_attribute('limit')
+        self.build_layers()
         if self.device:
             self.to(self.device)
 
+    def build_layers(self):
+        # Build model layers
+        self.layer_config = self.config['layer_config']
+        self.encoder_layer_config = self.layer_config[0]
+        self.decoder_layer_config = self.layer_config[1]
+
+        # Encoder layers:
+        encoder_layers_num = len(self.encoder_layer_config)
+        encoder_layers = []
+        for i in range(1, encoder_layers_num - 1):
+            in_dim, out_dim = self.encoder_layer_config[i - 1], self.encoder_layer_config[i]
+            encoder_layers.append(('en_lin_%d' % i, nn.Linear(in_dim, out_dim)))
+            encoder_layers.append(('en_lin_batchnorm_%d' % i, nn.BatchNorm1d(out_dim)))
+            encoder_layers.append(('en_act_%d' % i, nn.ReLU()))
+        self.encoder = nn.Sequential(OrderedDict(encoder_layers))
+
+        # Latent space layer (mu & log_var):
+        in_dim, out_dim = \
+            self.encoder_layer_config[encoder_layers_num - 2], \
+            self.encoder_layer_config[encoder_layers_num - 1]
+        self.latent_dim = out_dim
+        self.fc_mean = nn.Linear(in_dim, out_dim)
+        self.mean_batchnorm = nn.BatchNorm1d(out_dim)
+        self.fc_logvar = nn.Linear(in_dim, out_dim)
+        self.logvar_batchnorm = nn.BatchNorm1d(out_dim)
+
+        # Sample from N(0., 1.)
+        self.sample = SampleZ()
+
+        # Decoder layers:
+        decoder_layers_num = len(self.decoder_layer_config)
+        decoder_layers = []
+        for i in range(1, decoder_layers_num - 1):
+            in_dim, out_dim = self.decoder_layer_config[i - 1], self.decoder_layer_config[i]
+            decoder_layers.append(('de_lin_%d' % i, nn.Linear(in_dim, out_dim)))
+            decoder_layers.append(('de_lin_batchnorm_%d' % i, nn.BatchNorm1d(out_dim)))
+            decoder_layers.append(('de_act_%d' % i, nn.ReLU()))
+
+        # Last layer of decoder:
+        in_dim, out_dim = \
+            self.decoder_layer_config[decoder_layers_num - 2], \
+            self.decoder_layer_config[decoder_layers_num - 1]
+        decoder_layers.append(('de_lin_%d' % (decoder_layers_num - 1), nn.Linear(in_dim, out_dim)))
+        decoder_layers.append(('de_act_%d' % (decoder_layers_num - 1), ReLUlimit(limit=self.limit)))
+        self.decoder = nn.Sequential(OrderedDict(decoder_layers))
+
+        # Loss:
+        self.loss = VAELossGaussian()
+
     def encode(self, x):
-        x = self.encoder_(x)
-        mu = self.en_mu(x)
-        mu = self.en_mu_batchnorm(mu)
-        log_var = self.en_log_var(x)
-        log_var = self.en_log_var_batchnorm(log_var)
+        x = self.encoder(x)
+        mu = self.mean_batchnorm(self.fc_mean(x))
+        log_var = self.logvar_batchnorm(self.fc_logvar(x))
         return mu, log_var
 
-    def loss(self, y_true, y_pred, mu, log_var):
-        # E[log P(X|z)]
-        recon = -gaussian_likelihood(y_true, y_pred, self.device)
-        # D_KL(Q(z|X) || P(z|X))
-        kld = 0.5 * torch.sum(
-            torch.exp(log_var) + torch.square(mu) - 1. - log_var, dim=1)
-        return (kld + recon).mean()
+
+from classifier import BaseClassifier, BaseClassifierCriterium
+from utils import get_attribute
+
+class GaussianVAEandClassifierCriterium(nn.Module):
+    def __init__(self, n_classes=2):
+        super().__init__()
+        self.n_classes = n_classes
+        self.vaeg_loss = VAELossGaussian()
+        self.clf_loss = BaseClassifierCriterium(n_classes=self.n_classes)
+
+    def forward(self, input, target, latent_dist):
+        loss, _, __ = self.forward_(input, target, latent_dist)
+        return loss
+
+    def forward_(self, input, target, latent_dist, y_logits_pred, y_true):
+        vae_loss, recon, kld = self.vaeg_loss.forward_(input, target, latent_dist)
+        clf_loss = self.clf_loss(y_logits_pred, y_true)
+        loss = vae_loss + clf_loss
+        return loss, recon, kld, clf_loss
+
+class JointSpecGaussianVAEandClassifier(BaseVAE):
+    def __init__(self, config, device=None):
+        super(JointSpecGaussianVAEandClassifier, self).__init__(config, device)
+        self.name = self.get_attribute('name', required=False, default='joint_gvae_classifier')
+        self.limit = self.get_attribute('limit')
+        self.clf_config = self.get_attribute('clf_config')
+        self.build_layers()
+        if self.device:
+            self.to(self.device)
+
+    def build_layers(self):
+        # Build model layers
+        self.layer_config = self.config['layer_config']
+        self.encoder_layer_config = self.layer_config[0]
+        self.decoder_layer_config = self.layer_config[1]
+
+        # Encoder layers:
+        encoder_layers_num = len(self.encoder_layer_config)
+        encoder_layers = []
+        for i in range(1, encoder_layers_num - 1):
+            in_dim, out_dim = self.encoder_layer_config[i - 1], self.encoder_layer_config[i]
+            encoder_layers.append(('en_lin_%d' % i, nn.Linear(in_dim, out_dim)))
+            encoder_layers.append(('en_lin_batchnorm_%d' % i, nn.BatchNorm1d(out_dim)))
+            encoder_layers.append(('en_act_%d' % i, nn.ReLU()))
+        self.encoder = nn.Sequential(OrderedDict(encoder_layers))
+
+        # Latent space layer (mu & log_var):
+        in_dim, out_dim = \
+            self.encoder_layer_config[encoder_layers_num - 2], \
+            self.encoder_layer_config[encoder_layers_num - 1]
+        self.latent_dim = out_dim
+        self.fc_mean = nn.Linear(in_dim, out_dim)
+        self.mean_batchnorm = nn.BatchNorm1d(out_dim)
+        self.fc_logvar = nn.Linear(in_dim, out_dim)
+        self.logvar_batchnorm = nn.BatchNorm1d(out_dim)
+
+        # Sample from N(0., 1.)
+        self.sample = SampleZ()
+
+        # Decoder layers:
+        decoder_layers_num = len(self.decoder_layer_config)
+        decoder_layers = []
+        for i in range(1, decoder_layers_num - 1):
+            in_dim, out_dim = self.decoder_layer_config[i - 1], self.decoder_layer_config[i]
+            decoder_layers.append(('de_lin_%d' % i, nn.Linear(in_dim, out_dim)))
+            decoder_layers.append(('de_lin_batchnorm_%d' % i, nn.BatchNorm1d(out_dim)))
+            decoder_layers.append(('de_act_%d' % i, nn.ReLU()))
+
+        # Last layer of decoder:
+        in_dim, out_dim = \
+            self.decoder_layer_config[decoder_layers_num - 2], \
+            self.decoder_layer_config[decoder_layers_num - 1]
+        decoder_layers.append(('de_lin_%d' % (decoder_layers_num - 1), nn.Linear(in_dim, out_dim)))
+        decoder_layers.append(('de_act_%d' % (decoder_layers_num - 1), ReLUlimit(limit=self.limit)))
+        self.decoder = nn.Sequential(OrderedDict(decoder_layers))
+
+        # Classification model:
+        from dataset import Identity
+        self.clf_model = BaseClassifier(config={
+            'name':                 get_attribute(self.clf_config, 'name', required=False, default='InnerVAEClf'),
+            'n_classes':            get_attribute(self.clf_config, 'n_classes'),
+            'layer_config':         get_attribute(self.clf_config, 'layer_config'),
+            'transform':            get_attribute(self.clf_config, 'transform', 
+                                        required=False, default=tv.transforms.Compose([Identity()])),
+            'target_column':        get_attribute(self.clf_config, 'target_column'),
+            'target_column_id':     get_attribute(self.clf_config, 'target_column'),
+            'input_columns':        get_attribute(self.clf_config, 'input_columns'),
+            'types':                get_attribute(self.clf_config, 'types'),
+            'class_subset':         get_attribute(self.clf_config, 'class_subset', required=False, default=[]),
+            'dataset':              self.get_attribute('dataset', required=False)
+        })
+        # Loss:
+        self.loss = GaussianVAEandClassifierCriterium(n_classes=self.clf_model.config['n_classes'])
+
+    def encode(self, x):
+        x = self.encoder(x)
+        mu = self.mean_batchnorm(self.fc_mean(x))
+        log_var = self.logvar_batchnorm(self.fc_logvar(x))
+        return mu, log_var
+
+    def forward(self, x):
+        x, _, __, ___ = self.forward_(x)
+        return x
+
+    def forward_(self, x):
+        latent_dist = self.encode(x)
+        logits, labels = self.clf_model.forward_(latent_dist[0])
+        z = self.reparameterize(latent_dist)
+        x = self.decode(z)
+        return x, z, latent_dist, (logits, labels)
 
 
-def gaussian_likelihood(x_true, x_pred, device):
-    scale = torch.exp(torch.Tensor([0.0])).to(device)
-    dist = torch.distributions.Normal(x_pred, scale)
-    log_p = dist.log_prob(x_true).to(device)
-    return log_p.sum(dim=1)
+
+from regressor import BaseRegressor, BaseRegressorCriterium
+
+class GaussianVAEandRegressorCriterium(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.vaeg_loss = VAELossGaussian()
+        self.reg_loss = BaseRegressorCriterium()
+
+    def forward(self, input, target, latent_dist):
+        loss, _, __ = self.forward_(input, target, latent_dist)
+        return loss
+
+    def forward_(self, input, target, latent_dist, y_pred, y_true):
+        vae_loss, recon, kld = self.vaeg_loss.forward_(input, target, latent_dist)
+        reg_loss = self.reg_loss(y_pred, y_true)
+        loss = vae_loss + reg_loss
+        return loss, recon, kld, reg_loss
+
+class JointSpecGaussianVAEandRegressor(BaseVAE):
+    def __init__(self, config, device=None):
+        super(JointSpecGaussianVAEandRegressor, self).__init__(config, device)
+        self.name = self.get_attribute('name', required=False, default='joint_gvae_regressor')
+        self.limit = self.get_attribute('limit')
+        self.regressor_config = self.get_attribute('regressor_config')
+        self.build_layers()
+        if self.device:
+            self.to(self.device)
+
+    def build_layers(self):
+        # Build model layers
+        self.layer_config = self.config['layer_config']
+        self.encoder_layer_config = self.layer_config[0]
+        self.decoder_layer_config = self.layer_config[1]
+
+        # Encoder layers:
+        encoder_layers_num = len(self.encoder_layer_config)
+        encoder_layers = []
+        for i in range(1, encoder_layers_num - 1):
+            in_dim, out_dim = self.encoder_layer_config[i - 1], self.encoder_layer_config[i]
+            encoder_layers.append(('en_lin_%d' % i, nn.Linear(in_dim, out_dim)))
+            encoder_layers.append(('en_lin_batchnorm_%d' % i, nn.BatchNorm1d(out_dim)))
+            encoder_layers.append(('en_act_%d' % i, nn.ReLU()))
+        self.encoder = nn.Sequential(OrderedDict(encoder_layers))
+
+        # Latent space layer (mu & log_var):
+        in_dim, out_dim = \
+            self.encoder_layer_config[encoder_layers_num - 2], \
+            self.encoder_layer_config[encoder_layers_num - 1]
+        self.latent_dim = out_dim
+        self.fc_mean = nn.Linear(in_dim, out_dim)
+        self.mean_batchnorm = nn.BatchNorm1d(out_dim)
+        self.fc_logvar = nn.Linear(in_dim, out_dim)
+        self.logvar_batchnorm = nn.BatchNorm1d(out_dim)
+
+        # Sample from N(0., 1.)
+        self.sample = SampleZ()
+
+        # Decoder layers:
+        decoder_layers_num = len(self.decoder_layer_config)
+        decoder_layers = []
+        for i in range(1, decoder_layers_num - 1):
+            in_dim, out_dim = self.decoder_layer_config[i - 1], self.decoder_layer_config[i]
+            decoder_layers.append(('de_lin_%d' % i, nn.Linear(in_dim, out_dim)))
+            decoder_layers.append(('de_lin_batchnorm_%d' % i, nn.BatchNorm1d(out_dim)))
+            decoder_layers.append(('de_act_%d' % i, nn.ReLU()))
+
+        # Last layer of decoder:
+        in_dim, out_dim = \
+            self.decoder_layer_config[decoder_layers_num - 2], \
+            self.decoder_layer_config[decoder_layers_num - 1]
+        decoder_layers.append(('de_lin_%d' % (decoder_layers_num - 1), nn.Linear(in_dim, out_dim)))
+        decoder_layers.append(('de_act_%d' % (decoder_layers_num - 1), ReLUlimit(limit=self.limit)))
+        self.decoder = nn.Sequential(OrderedDict(decoder_layers))
+
+        # Classification model:
+        from dataset import Identity
+        self.regressor_model = BaseRegressor(config={
+            'name':                 get_attribute(self.regressor_config, 'name', required=False, default='InnerVAERegressor'),
+            'layer_config':         get_attribute(self.regressor_config, 'layer_config'),
+            'transform':            get_attribute(self.regressor_config, 'transform', 
+                                        required=False, default=tv.transforms.Compose([Identity()])),
+            'target_column':        get_attribute(self.regressor_config, 'target_column'),
+            'input_columns':        get_attribute(self.regressor_config, 'input_columns'),
+            'types':                get_attribute(self.regressor_config, 'types'),
+            'dataset':              self.get_attribute('dataset', required=False)
+        })
+        # Loss:
+        self.loss = GaussianVAEandRegressorCriterium()
+
+    def encode(self, x):
+        x = self.encoder(x)
+        mu = self.mean_batchnorm(self.fc_mean(x))
+        log_var = self.logvar_batchnorm(self.fc_logvar(x))
+        return mu, log_var
+
+    def forward(self, x):
+        x, _, __, ___ = self.forward_(x)
+        return x
+
+    def forward_(self, x):
+        latent_dist = self.encode(x)
+        y_pred = self.regressor_model(latent_dist[0])
+        z = self.reparameterize(latent_dist)
+        x = self.decode(z)
+        return x, z, latent_dist, y_pred
+

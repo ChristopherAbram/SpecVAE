@@ -5,17 +5,38 @@ import sklearn.metrics.pairwise as smp
 import matchms.similarity
 from matchms import Spectrum
 from matchms.filtering import add_precursor_mz
+from matchms.filtering import normalize_intensities
 from dataset import ToSparseSpectrum
 from matplotlib import pyplot as plt
+
+import torch
 
 
 def get_project_path():
     return pathlib.Path(__file__).parent.parent.absolute()
 
+def get_attribute(config, name, default=None, required=True):
+    if name in config:
+        return config[name]
+    elif required:
+        raise ValueError('%s parameter missing' % name)
+    return default
+
 
 def cosine_similarity(x_true_batch, x_pred_batch):
     cs = smp.cosine_similarity(x_true_batch, x_pred_batch)
     return np.trace(cs) / x_true_batch.shape[0]
+
+
+def device(use_cuda = True, dev_name='cuda:0'):
+    cpu_device = torch.device('cpu')
+    if torch.cuda.is_available() and use_cuda:
+        device = torch.device(dev_name)
+        print('GPU device count:', torch.cuda.device_count())
+    else:
+        device = torch.device('cpu')
+    print('Device in use: ', device)
+    return device, cpu_device
 
 
 class ModifiedCosine:
