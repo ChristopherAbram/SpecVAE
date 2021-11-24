@@ -11,12 +11,12 @@ from specvae import dataset as dt
 from specvae.vae import SpecVEA
 from specvae.train import VAETrainer
 
-device, cpu_device = utils.device(use_cuda=True, dev_name='cuda:1')
+device, cpu_device = utils.device(use_cuda=True, dev_name='cuda:0')
 
 
 def main(argc, argv):
     # Processing parameters:
-    model_name              = 'beta_vae'
+    model_name              = 'beta_vae_test'
     dataset                 = 'MoNA' # HMDB and MoNA
     n_samples               = -1 # -1 if all
     spec_max_mz             = 2500
@@ -33,7 +33,7 @@ def main(argc, argv):
     types                   = [torch.float32] * len(input_columns)
 
     # Train parameters:
-    n_epochs                = 30
+    n_epochs                = 5
     batch_size              = 128
     learning_rate_          = [0.001]
     dropout_                = [0.0]

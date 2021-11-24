@@ -6,11 +6,10 @@ import itertools as it
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
-import train
-import utils
-import dataset as dt
-from classifier import BaseClassifier
-from train import ClassifierTrainer
+from specvae import train, utils
+import specvae.dataset as dt
+from specvae.classifier import BaseClassifier
+from specvae.train import ClassifierTrainer
 
 use_cuda = True
 device, cpu_device = utils.device(use_cuda, dev_name='cuda:0')
@@ -28,6 +27,7 @@ def main(argc, argv):
     dropouts = [0.0]
     normalize_intensity = True
     normalize_mass = True
+    rescale_intensity = False
     n_samples = 3000 # -1 if all
 
     # Column settings:
@@ -58,8 +58,7 @@ def main(argc, argv):
             dt.SplitSpectrum(),
             dt.TopNPeaks(n=max_num_peaks),
             dt.FilterPeaks(max_mz=spec_max_mz, min_intensity=min_intensity),
-            dt.Normalize(intensity=True, mass=True, rescale_intensity=False,
-                max_mz=spec_max_mz, min_intensity=min_intensity),
+            dt.Normalize(intensity=normalize_intensity, mass=normalize_mass, rescale_intensity=rescale_intensity),
             # dt.UpscaleIntensity(max_mz=spec_max_mz),
             dt.ToMZIntConcatAlt(max_num_peaks=max_num_peaks),
             # dt.Int2OneHot('instrument_id', 305),
@@ -87,25 +86,32 @@ def main(argc, argv):
             print("learning_rate: ", learning_rate)
 
             config = {
+                # Model params:
                 'name':                 model_name,
                 'layer_config':         np.array(layers),
                 'n_classes':            metadata[target_column]['n_class'] if len(class_subset) == 0 else len(class_subset),
                 'dropout':              dropout,
-                'transform':            transform,
                 'class_weights':        class_weights,
                 'target_column':        class_column,
                 'target_column_id':     target_column,
                 'input_columns':        input_columns,
                 'input_sizes':          input_sizes,
                 'types':                types,
-                'class_subset':         class_subset,
+                # Preprocessing params:
                 'dataset':              dataset,
+                'transform':            transform,
+                'class_subset':         class_subset,
                 'max_mz':               spec_max_mz,
                 'min_intensity':        min_intensity,
                 'max_num_peaks':        max_num_peaks,
                 'normalize_intensity':  normalize_intensity,
                 'normalize_mass':       normalize_mass,
+                'rescale_intensity':    rescale_intensity,
+                # Training parameters:
                 'n_samples':            n_samples,
+                'n_epochs':             n_epochs,
+                'batch_size':           batch_size,
+                'learning_rate':        learning_rate,
             }
 
             # Create model:
