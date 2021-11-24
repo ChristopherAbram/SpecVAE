@@ -21,7 +21,7 @@ def accuracy_score(y_true, y_pred):
     return tm.functional.accuracy(y_pred, y_true).item()
 
 def balanced_accuracy_score(y_true, y_pred):
-    n_classes = torch.unique(y_true).shape[0]
+    n_classes = torch.max(y_true).item() + 1
     return tm.functional.accuracy(y_pred, y_true, average='macro', num_classes=n_classes).item()
 
 def recall_score(y_true, y_pred):
@@ -35,17 +35,17 @@ def f1_score(y_true, y_pred):
 
 def recall_score_macro(y_true, y_pred):
     # return skm.recall_score(y_true, y_pred, average='macro')
-    n_classes = torch.unique(y_true).shape[0]
+    n_classes = torch.max(y_true).item() + 1
     return tm.functional.recall(y_pred, y_true, average='macro', num_classes=n_classes).item()
 
 def precision_score_macro(y_true, y_pred):
     # return skm.precision_score(y_true, y_pred, average='macro')
-    n_classes = torch.unique(y_true).shape[0]
+    n_classes = torch.max(y_true).item() + 1
     return tm.functional.precision(y_pred, y_true, average='macro', num_classes=n_classes).item()
 
 def f1_score_macro(y_true, y_pred):
     # return skm.f1_score(y_true, y_pred, average='macro')
-    n_classes = torch.unique(y_true).shape[0]
+    n_classes = torch.max(y_true).item() + 1
     return tm.functional.f1(y_pred, y_true, average='macro', num_classes=n_classes).item()
 
 def mean_squared_error(y_true, y_pred):
