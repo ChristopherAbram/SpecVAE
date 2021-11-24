@@ -540,7 +540,7 @@ class HMDB(Spectra):
         return data_frame
 
 
-import utils
+from . import utils
 from torch.utils.data import DataLoader, WeightedRandomSampler
 
 

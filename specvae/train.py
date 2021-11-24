@@ -2,8 +2,8 @@ from datetime import datetime
 import torch, os
 import numpy as np
 # import torch.profiler
-import utils
-import metrics as mcs
+from . import utils
+from . import metrics as mcs
 
 
 class MetricCounter:
@@ -534,7 +534,8 @@ def export_training_session(trainer, paths,
     train_loader=None, valid_loader=None, test_loader=None, 
         n_mol=100, metrics=[], evaluation_metrics=[]):
 
-    import visualize as vis, json
+    from . import visualize as vis
+    import json
     model = trainer.model
     # Save model:
     if hasattr(model, 'save'):

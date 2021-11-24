@@ -7,9 +7,10 @@ import torchvision as tv
 from torch.utils.data import DataLoader
 from matchms import Spectrum
 
-import specvae.utils as utils, specvae.dataset as dt
-from specvae.dataset import MoNA
-import specvae.vae as vae
+from . import utils as utils
+from . import dataset as dt
+from .dataset import MoNA
+from . import vae
 
 
 def load_spectra_data(dataset, transform, n_samples=-1, device=None, cols=['spectrum']):

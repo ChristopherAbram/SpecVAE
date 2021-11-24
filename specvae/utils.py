@@ -6,7 +6,7 @@ import matchms.similarity
 from matchms import Spectrum
 from matchms.filtering import add_precursor_mz
 from matchms.filtering import normalize_intensities
-from dataset import ToSparseSpectrum
+from .dataset import ToSparseSpectrum
 from matplotlib import pyplot as plt
 
 import torch

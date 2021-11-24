@@ -3,7 +3,7 @@ from pathlib import Path
 import papermill as pm
 import shutil as sh
 
-import utils
+from . import utils
 
 
 def main(argc, argv):

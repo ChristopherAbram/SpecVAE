@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torchvision as tv
 
 
-from model import BaseModel
+from .model import BaseModel
 
 
 class Lambda(nn.Module):
@@ -256,8 +256,8 @@ class SpecGaussianVAE(BaseVAE):
         return mu, log_var
 
 
-from classifier import BaseClassifier, BaseClassifierCriterium
-from utils import get_attribute
+from .classifier import BaseClassifier, BaseClassifierCriterium
+from .utils import get_attribute
 
 class GaussianVAEandClassifierCriterium(nn.Module):
     def __init__(self, n_classes=2):
@@ -369,7 +369,7 @@ class JointSpecGaussianVAEandClassifier(BaseVAE):
 
 
 
-from regressor import BaseRegressor, BaseRegressorCriterium
+from .regressor import BaseRegressor, BaseRegressorCriterium
 
 class GaussianVAEandRegressorCriterium(nn.Module):
     def __init__(self):
@@ -444,7 +444,7 @@ class JointSpecGaussianVAEandRegressor(BaseVAE):
         self.decoder = nn.Sequential(OrderedDict(decoder_layers))
 
         # Classification model:
-        from dataset import Identity
+        from .dataset import Identity
         self.regressor_model = BaseRegressor(config={
             'name':                 get_attribute(self.regressor_config, 'name', required=False, default='InnerVAERegressor'),
             'layer_config':         get_attribute(self.regressor_config, 'layer_config'),

@@ -1,6 +1,6 @@
 import torch.nn as nn
 from collections import OrderedDict
-from model import BaseModel
+from .model import BaseModel
 
 
 class BaseRegressorCriterium(nn.Module):

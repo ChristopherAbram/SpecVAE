@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from collections import OrderedDict
-from model import BaseModel
+from .model import BaseModel
 
 
 class BCEWithLogitsLoss(nn.BCEWithLogitsLoss):
