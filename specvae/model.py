@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import utils
+from . import utils
 
 
 class BaseModel(nn.Module):

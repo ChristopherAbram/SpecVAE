@@ -88,7 +88,7 @@ def plot_spectra_compare(spectra1, spectra2, grid=(4, 3), figsize=(17, 9), filep
 
 def plot_spectrum(spectrum, name='', filepath=None, resolution=0.05, max_mz=2500, structure=False, meta=None, ax=None, figsize=(5, 5)):
     if isinstance(spectrum, str):
-        from specvae.dataset import ToDenseSpectrum, SplitSpectrum
+        from .dataset import ToDenseSpectrum, SplitSpectrum
         spectrum = ToDenseSpectrum(resolution, max_mz)(SplitSpectrum()(spectrum))
     mz = np.arange(0, max_mz, step=resolution)
     if ax is None:

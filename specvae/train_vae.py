@@ -6,12 +6,12 @@ import itertools as it
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
-import train, utils, visualize
-import dataset as dt
-from vae import SpecVEA, SpecGaussianVAE
-from train import VAETrainer
+from specvae import train, utils, visualize
+from specvae import dataset as dt
+from specvae.vae import SpecVEA
+from specvae.train import VAETrainer
 
-device, cpu_device = utils.device(use_cuda=True, dev_name='cuda:0')
+device, cpu_device = utils.device(use_cuda=True, dev_name='cuda:1')
 
 
 def main(argc, argv):
@@ -21,9 +21,9 @@ def main(argc, argv):
     n_samples               = -1 # -1 if all
     spec_max_mz             = 2500
     max_num_peaks_          = [10, 15, 25, 50]
-    min_intensity_          = [0.1, 0.2, 0.5, 1.]
-    # beta_                   = [0.01, 0.1, 0.2, 0.5, 1., 2., 5., 10., 100.]
-    beta_                   = [1.]
+    # min_intensity_          = [0.1, 0.2, 0.5, 1.]
+    min_intensity_          = [0.01, 0.001, 0.0001]
+    beta_                   = [0.01, 0.1, 0.2, 0.5, 1., 2., 5., 10., 100.]
     rescale_intensity_      = [True, False]
     normalize_intensity     = True
     normalize_mass          = True
@@ -33,7 +33,7 @@ def main(argc, argv):
     types                   = [torch.float32] * len(input_columns)
 
     # Train parameters:
-    n_epochs                = 20
+    n_epochs                = 30
     batch_size              = 128
     learning_rate_          = [0.001]
     dropout_                = [0.0]
@@ -42,10 +42,22 @@ def main(argc, argv):
     # List of parameters:
     layers_configs = [
         #               Encoder,         Decoder
-        lambda indim: [[indim, 15, 3],  [3, 15, indim]],
-        lambda indim: [[indim, 15, 4],  [4, 15, indim]],
-        lambda indim: [[indim, 15, 5],  [5, 15, indim]],
-        lambda indim: [[indim, 15, 10], [10, 15, indim]],
+        # Latent size:
+        # lambda indim: [[indim, 15, 3],  [3, 15, indim]],
+        # lambda indim: [[indim, 15, 4],  [4, 15, indim]],
+        # lambda indim: [[indim, 15, 5],  [5, 15, indim]], 
+        # lambda indim: [[indim, 15, 10], [10, 15, indim]],
+        
+        # # Depth:
+        # lambda indim: [[indim, 3], [3, indim]],
+        # lambda indim: [[indim, 15, 10, 3], [3, 10, 15, indim]],
+        # lambda indim: [[indim, 15, 10, 5, 3], [3, 5, 10, 15, indim]],
+
+        # # Assymetric:
+        lambda indim: [[indim, 15, 3], [3, indim]],
+        # lambda indim: [[indim, 3], [3, 15, indim]],
+        # lambda indim: [[indim, 10, 3], [3, 10, 15, indim]],
+        # lambda indim: [[indim, 15, 10, 3], [3, 10, indim]],
     ]
 
     pre_configs = it.product(max_num_peaks_, min_intensity_, rescale_intensity_)
