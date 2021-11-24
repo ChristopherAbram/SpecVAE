@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from collections import OrderedDict
 from .model import BaseModel
@@ -34,6 +35,24 @@ class BaseRegressor(BaseModel):
 
     def forward(self, x):
         return self.layers(x)
+
+    def fit(self, X, y):
+        # mock for sklearn...
+        ...
+
+    def predict(self, x):
+        return self.forward(x)
+
+    def score(self, X, y, sample_weight=None):
+        from sklearn.metrics import mean_squared_error
+        if torch.is_tensor(X):
+            y_pred = self.predict(X)
+        else:
+            X_ = torch.from_numpy(X)
+            y_pred = self.predict(X_)
+        y, y_pred = y.data.cpu().numpy(), y_pred.data.cpu().numpy()
+        # RMSE
+        return mean_squared_error(y, y_pred, sample_weight=sample_weight, squared=False)
 
     def get_layer_string(self):
         return '-'.join(str(x) for x in self.layer_config) + '-1'

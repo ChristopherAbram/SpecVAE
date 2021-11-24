@@ -36,7 +36,7 @@ def main(argc, argv):
     rescale_intensity_      = [False]
     normalize_intensity     = True
     normalize_mass          = True
-    n_samples               = -1 # -1 if all
+    n_samples               = 10000 # -1 if all
 
     # Column settings:
     class_column_           = {
