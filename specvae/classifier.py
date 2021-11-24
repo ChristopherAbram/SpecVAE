@@ -86,5 +86,19 @@ class BaseClassifier(BaseModel):
         else:
             return F.softmax(self.layers(x))
 
+    def fit(self, X, y):
+        # mock for sklearn...
+        ...
+
+    def score(self, X, y, sample_weight=None):
+        from sklearn.metrics import accuracy_score
+        if torch.is_tensor(X):
+            y_pred = self.predict(X)
+        else:
+            X_ = torch.from_numpy(X)
+            y_pred = self.predict(X_)
+        y, y_pred = y.data.cpu().numpy(), y_pred.data.cpu().numpy()
+        return accuracy_score(y, y_pred, sample_weight=sample_weight)
+
     def get_layer_string(self):
         return '-'.join(str(x) for x in self.layer_config) + '-' + (str(self.n_classes) if self.n_classes > 2 else '1')

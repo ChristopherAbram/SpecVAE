@@ -112,8 +112,8 @@ class Trainer:
         values = {}
         loss, y_true, y_pred, mvalues = self.model_forward(data_batch)
         values['loss'] = loss.item()
-        y_true = y_true.squeeze().data.cpu().numpy()
-        y_pred = y_pred.squeeze().data.cpu().numpy()
+        # y_true = y_true.squeeze().data.cpu().numpy()
+        # y_pred = y_pred.squeeze().data.cpu().numpy()
         for metric_name in internal_metrics:
             if metric_name in mvalues:
                 values[metric_name] = mvalues[metric_name]
@@ -364,10 +364,10 @@ class ComposedTrainer(Trainer):
 
     def test_step_sub(self, epoch, step, data_batch, metrics=[], metric_funcs={}):
         values = {}
-        x_batch, y_batch, ids_batch = data_batch
-        x_recon_batch, latent_sample, latent_dist, (y_logits_batch, y_pred_batch) = self.model.forward_(x_batch)
-        y_true = y_batch.squeeze().data.cpu().numpy()
-        y_pred = y_pred_batch.squeeze().data.cpu().numpy()
+        x_batch, y_true, ids_batch = data_batch
+        x_recon_batch, latent_sample, latent_dist, (y_logits_batch, y_pred) = self.model.forward_(x_batch)
+        # y_true = y_batch.squeeze().data.cpu().numpy()
+        # y_pred = y_pred_batch.squeeze().data.cpu().numpy()
         for metric_name in metrics:
             values[metric_name] = metric_funcs[metric_name](y_true, y_pred)
         return values
@@ -407,10 +407,10 @@ class JointVAEandClassifierTrainer(ComposedTrainer):
 
     def test_step_sub(self, epoch, step, data_batch, metrics=[], metric_funcs={}):
         values = {}
-        x_batch, y_batch, ids_batch = data_batch
-        x_recon_batch, latent_sample, latent_dist, y_pred_batch = self.model.forward_(x_batch)
-        y_true = y_batch.squeeze().data.cpu().numpy()
-        y_pred = y_pred_batch.squeeze().data.cpu().numpy()
+        x_batch, y_true, ids_batch = data_batch
+        x_recon_batch, latent_sample, latent_dist, y_pred = self.model.forward_(x_batch)
+        # y_true = y_batch.squeeze().data.cpu().numpy()
+        # y_pred = y_pred_batch.squeeze().data.cpu().numpy()
         for metric_name in metrics:
             values[metric_name] = metric_funcs[metric_name](y_true, y_pred)
         return values
@@ -429,10 +429,10 @@ class JointVAEandRegressorTrainer(ComposedTrainer):
 
     def test_step_sub(self, epoch, step, data_batch, metrics=[], metric_funcs={}):
         values = {}
-        x_batch, y_batch, ids_batch = data_batch
-        x_recon_batch, latent_sample, latent_dist, y_pred_batch = self.model.forward_(x_batch)
-        y_true = y_batch.squeeze().data.cpu().numpy()
-        y_pred = y_pred_batch.squeeze().data.cpu().numpy()
+        x_batch, y_true, ids_batch = data_batch
+        x_recon_batch, latent_sample, latent_dist, y_pred = self.model.forward_(x_batch)
+        # y_true = y_batch.squeeze().data.cpu().numpy()
+        # y_pred = y_pred_batch.squeeze().data.cpu().numpy()
         for metric_name in metrics:
             values[metric_name] = metric_funcs[metric_name](y_true, y_pred)
         return values
@@ -564,46 +564,50 @@ def export_training_session(trainer, paths,
     def compute_metrics_for_average_sample(loader, metrics):
         vals = {}
         try:
-            spectra = loader.dataset.dataset.data['spectrum'].data.cpu().numpy()
-            mean_spectrum = np.expand_dims(spectra.mean(axis=0), axis=0)
+            spectra = loader.dataset.dataset.data['spectrum'] #.data.cpu().numpy()
+            mean_spectrum = torch.unsqueeze(spectra.mean(dim=0), dim=0)
             for m in metrics:
                 f = getattr(mcs, m)
                 vals[m] = f(spectra, mean_spectrum)
             return vals
         except:
-            print("Unable to compute metrics for average smaple...")
+            print("Unable to compute metrics for average sample...")
             return None
     
     # Evaluate model:
     metric = {}
     fmetric = {}
+    from .vae import BaseVAE
     if test_loader is not None:
         train_e = trainer.evaluate(train_loader, metrics, evaluation_metrics)
         for key, item in train_e.items():
             metric['model/train/' + key] = item
             fmetric['train_' + key] = item
-        train_avg = compute_metrics_for_average_sample(train_loader, evaluation_metrics)
-        if train_avg is not None:
-            for key, item in train_avg.items():
-                fmetric['train_avg_' + key] = item
+        if isinstance(model, BaseVAE):
+            train_avg = compute_metrics_for_average_sample(train_loader, evaluation_metrics)
+            if train_avg is not None:
+                for key, item in train_avg.items():
+                    fmetric['train_avg_' + key] = item
     if valid_loader is not None:
         valid_e = trainer.evaluate(valid_loader, metrics, evaluation_metrics)
         for key, item in valid_e.items():
             metric['model/valid/' + key] = item
             fmetric['valid_' + key] = item
-        valid_avg = compute_metrics_for_average_sample(valid_loader, evaluation_metrics)
-        if valid_avg is not None:
-            for key, item in valid_avg.items():
-                fmetric['valid_avg_' + key] = item
+        if isinstance(model, BaseVAE):
+            valid_avg = compute_metrics_for_average_sample(valid_loader, evaluation_metrics)
+            if valid_avg is not None:
+                for key, item in valid_avg.items():
+                    fmetric['valid_avg_' + key] = item
     if test_loader is not None:
         test_e = trainer.evaluate(test_loader, metrics, evaluation_metrics)
         for key, item in test_e.items():
             metric['model/test/' + key] = item
             fmetric['test_' + key] = item
-        test_avg = compute_metrics_for_average_sample(test_loader, evaluation_metrics)
-        if test_avg is not None:
-            for key, item in test_avg.items():
-                fmetric['test_avg_' + key] = item
+        if isinstance(model, BaseVAE):
+            test_avg = compute_metrics_for_average_sample(test_loader, evaluation_metrics)
+            if test_avg is not None:
+                for key, item in test_avg.items():
+                    fmetric['test_avg_' + key] = item
 
     # Write the summary:
     with open(os.path.join(paths['training_path'], 'summary.txt'), 'w+') as summary:

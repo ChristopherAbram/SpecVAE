@@ -18,7 +18,7 @@ device, cpu_device = utils.device(use_cuda, dev_name='cuda:0')
 
 def main(argc, argv):
     # Processing parameters:
-    model_name = 'clf_dropout'
+    model_name = 'clf'
     dataset = 'MoNA' # HMDB and MoNA
     spec_max_mz = 2500
     # max_num_peakss = [100, 500, 1000]
@@ -28,19 +28,19 @@ def main(argc, argv):
     dropouts = [0.0]
     normalize_intensity = True
     normalize_mass = True
-    n_samples = 1000 # -1 if all
+    n_samples = 3000 # -1 if all
 
     # Column settings:
     class_column = 'ionization_mode'
     target_column = class_column + '_id'
-    input_columns = ['spectrum']
+    input_columns = ['spectrum', 'collision_energy', 'total_exact_mass', 'instrument_type_id', 'precursor_type_id', 'kingdom_id', 'superclass_id']
     types = [torch.float32] * len(input_columns)
     class_subset = []
 
     enable_profiler = False
 
     # Train parameters:
-    n_epochs = 50
+    n_epochs = 5
     batch_size = 128
 
     # List of parameters:
@@ -62,13 +62,15 @@ def main(argc, argv):
                 max_mz=spec_max_mz, min_intensity=min_intensity),
             # dt.UpscaleIntensity(max_mz=spec_max_mz),
             dt.ToMZIntConcatAlt(max_num_peaks=max_num_peaks),
-            # dt.Int2OneHot('instrument_type_id', 39),
-            # dt.Int2OneHot('precursor_type_id', 73),
-            # dt.Int2OneHot('superclass_id', 22),
-            # dt.Int2OneHot('class_id', 253),
+            # dt.Int2OneHot('instrument_id', 305),
+            dt.Int2OneHot('instrument_type_id', 39),
+            dt.Int2OneHot('precursor_type_id', 73),
+            dt.Int2OneHot('kingdom_id', 2),
+            dt.Int2OneHot('superclass_id', 19),
+            # dt.Int2OneHot('class_id', 280),
             # dt.Int2OneHot('subclass_id', 405),
-            # dt.Int2OneHot('kingdom_id', 2),
         ])
+
 
         # Load and transform dataset:
         train_loader, valid_loader, test_loader, metadata, class_weights = dt.load_data_classification(
@@ -76,7 +78,8 @@ def main(argc, argv):
             input_columns, types, target_column, True, class_subset)
 
         for i, (layers_fn, learning_rate, dropout) in enumerate(configs):
-            indim = 2 * max_num_peaks
+            input_sizes = [2 * max_num_peaks, 1, 1, 39, 73, 2, 19]
+            indim = np.array(input_sizes).sum()
             layers = layers_fn(indim)
 
             print("Train model:")
@@ -93,6 +96,7 @@ def main(argc, argv):
                 'target_column':        class_column,
                 'target_column_id':     target_column,
                 'input_columns':        input_columns,
+                'input_sizes':          input_sizes,
                 'types':                types,
                 'class_subset':         class_subset,
                 'dataset':              dataset,
@@ -106,7 +110,7 @@ def main(argc, argv):
 
             # Create model:
             model = BaseClassifier(config, device)
-            paths = train.prepare_training_session(model, dataset)
+            paths = train.prepare_training_session(model, subdirectory=dataset, session_name=model_name)
 
             profiler = None
             if enable_profiler:
@@ -123,7 +127,8 @@ def main(argc, argv):
             trainer = ClassifierTrainer(model, writer)
             trainer.compile(
                 optimizer=optim.Adam(model.parameters(), lr=learning_rate),
-                metrics=['accuracy_score', 'balanced_accuracy_score'])
+                metrics=['loss'],
+                evaluation_metrics=['accuracy_score', 'balanced_accuracy_score'])
 
             # Train the model:
             history = trainer.fit(
@@ -137,7 +142,8 @@ def main(argc, argv):
 
             train.export_training_session(trainer, paths, 
                 train_loader, valid_loader, test_loader, n_samples, 
-                metrics=['accuracy_score', 'balanced_accuracy_score', 
+                metrics=['loss'],
+                evaluation_metrics=['accuracy_score', 'balanced_accuracy_score', 
                     'recall_score_macro', 'precision_score_macro', 'f1_score_macro'])
 
     return 0
