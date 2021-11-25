@@ -11,18 +11,18 @@ from specvae import dataset as dt
 from specvae.vae import SpecVEA
 from specvae.train import VAETrainer
 
-device, cpu_device = utils.device(use_cuda=True, dev_name='cuda:0')
+device, cpu_device = utils.device(use_cuda=True, dev_name='cuda:3')
 
 
 def main(argc, argv):
     # Processing parameters:
-    model_name              = 'beta_vae_test'
+    session                 = 32
+    model_name              = 'beta_vae'
     dataset                 = 'MoNA' # HMDB and MoNA
     n_samples               = -1 # -1 if all
     spec_max_mz             = 2500
     max_num_peaks_          = [10, 15, 25, 50]
-    # min_intensity_          = [0.1, 0.2, 0.5, 1.]
-    min_intensity_          = [0.01, 0.001, 0.0001]
+    min_intensity_          = [0.01, 0.001, 0.0001, 0.1, 0.2, 0.5, 1.]
     beta_                   = [0.01, 0.1, 0.2, 0.5, 1., 2., 5., 10., 100.]
     rescale_intensity_      = [True, False]
     normalize_intensity     = True
@@ -33,11 +33,12 @@ def main(argc, argv):
     types                   = [torch.float32] * len(input_columns)
 
     # Train parameters:
-    n_epochs                = 5
+    n_epochs                = 20
     batch_size              = 128
     learning_rate_          = [0.001]
     dropout_                = [0.0]
     enable_profiler         = False
+    resume_training         = True
 
     # List of parameters:
     layers_configs = [
@@ -54,10 +55,10 @@ def main(argc, argv):
         # lambda indim: [[indim, 15, 10, 5, 3], [3, 5, 10, 15, indim]],
 
         # # Assymetric:
-        lambda indim: [[indim, 15, 3], [3, indim]],
+        # lambda indim: [[indim, 15, 3], [3, indim]],
         # lambda indim: [[indim, 3], [3, 15, indim]],
         # lambda indim: [[indim, 10, 3], [3, 10, 15, indim]],
-        # lambda indim: [[indim, 15, 10, 3], [3, 10, indim]],
+        lambda indim: [[indim, 15, 10, 3], [3, 10, indim]],
     ]
 
     pre_configs = it.product(max_num_peaks_, min_intensity_, rescale_intensity_)
@@ -69,99 +70,151 @@ def main(argc, argv):
             dt.TopNPeaks(n=max_num_peaks),
             dt.FilterPeaks(max_mz=spec_max_mz, min_intensity=min_intensity),
             dt.Normalize(intensity=normalize_intensity, mass=normalize_mass, rescale_intensity=rescale_intensity),
-            # dt.UpscaleIntensity(max_mz=spec_max_mz),
             dt.ToMZIntConcatAlt(max_num_peaks=max_num_peaks),
-            # dt.Int2OneHot('instrument_type_id', 39),
-            # dt.Int2OneHot('precursor_type_id', 73),
-            # dt.Int2OneHot('superclass_id', 22),
-            # dt.Int2OneHot('class_id', 253),
-            # dt.Int2OneHot('subclass_id', 405),
-            # dt.Int2OneHot('kingdom_id', 2),
         ])
 
         revtrans = tv.transforms.Compose([
             dt.ToMZIntDeConcatAlt(max_num_peaks=max_num_peaks),
             dt.Denormalize(intensity=normalize_intensity, mass=normalize_mass, max_mz=spec_max_mz),
-            # dt.DeUpscaleIntensity(max_mz=spec_max_mz),
             dt.ToDenseSpectrum(resolution=0.05, max_mz=spec_max_mz)
         ])
 
-        # Load and transform dataset:
-        train_loader, valid_loader, test_loader, metadata = dt.load_data(
-            dataset, transform, n_samples, batch_size, True, device, input_columns, types)
+        all = False
+        df = None
+        if resume_training:
+            try:
+                import pandas as pd
+                import os
+                filepath = utils.get_project_path() / '.model' / dataset / model_name / ('experiment%s.csv' % session)
+                if os.path.exists(filepath):
+                    df = pd.read_csv(filepath, index_col=False, error_bad_lines=False)
+                    all = True
+                    for i, (layers_fn, learning_rate, dropout, beta) in enumerate(configs):
+                        indim = 2 * max_num_peaks
+                        layers = layers_fn(indim)
+                        res = df[(df['param_max_num_peaks'] == max_num_peaks) & 
+                            (df['param_min_intensity'] == min_intensity) & 
+                            (df['param_rescale_intensity'] == rescale_intensity) & 
+                            (df['param_normalize_intensity'] == normalize_intensity) & 
+                            (df['param_normalize_mass'] == normalize_mass) & 
+                            (df['param_max_mz'] == spec_max_mz) & 
+                            (df['layer_config'].isin([str(layers)])) & 
+                            (df['param_latent_dim'] == layers[0][-1]) & 
+                            (df['param_beta'] == beta) & 
+                            (df['param_n_samples'] == n_samples) & 
+                            (df['param_n_epochs'] == n_epochs) & 
+                            (df['param_batch_size'] == batch_size) & 
+                            (df['param_learning_rate'] == learning_rate) & 
+                            (df['param_dropout'] == dropout)]
+                        if len(res) == 0:
+                            all = False
+                            break
+                else:
+                    print("Session file doesn't exist")
+            except Exception as e:
+                all = False
+                print("Error", e)
 
+        if not all and resume_training:
+            # Load and transform dataset:
+            train_loader, valid_loader, test_loader, metadata = dt.load_data(
+                dataset, transform, n_samples, batch_size, True, device, input_columns, types)
 
-        for i, (layers_fn, learning_rate, dropout, beta) in enumerate(configs):
-            indim = 2 * max_num_peaks
-            layers = layers_fn(indim)
+            configs = it.product(layers_configs, learning_rate_, dropout_, beta_)
+            for i, (layers_fn, learning_rate, dropout, beta) in enumerate(configs):
+                indim = 2 * max_num_peaks
+                layers = layers_fn(indim)
 
-            print("Train model:")
-            print("layers: ", layers)
-            print("learning_rate: ", learning_rate)
+                if resume_training and df is not None:
+                    res = df[(df['param_max_num_peaks'] == max_num_peaks) & 
+                        (df['param_min_intensity'] == min_intensity) & 
+                        (df['param_rescale_intensity'] == rescale_intensity) & 
+                        (df['param_normalize_intensity'] == normalize_intensity) & 
+                        (df['param_normalize_mass'] == normalize_mass) & 
+                        (df['param_max_mz'] == spec_max_mz) & 
+                        (df['layer_config'].isin([str(layers)])) & 
+                        (df['param_latent_dim'] == layers[0][-1]) & 
+                        (df['param_beta'] == beta) & 
+                        (df['param_n_samples'] == n_samples) & 
+                        (df['param_n_epochs'] == n_epochs) & 
+                        (df['param_batch_size'] == batch_size) & 
+                        (df['param_learning_rate'] == learning_rate) & 
+                        (df['param_dropout'] == dropout)]
+                    if len(res) > 0:
+                        print('Skip training for inner configuration...')
+                        continue
 
-            config = {
-                # Model params:
-                'name':                 model_name,
-                'layer_config':         np.array(layers),
-                'latent_dim':           layers[0][-1],
-                'beta':                 beta,
-                'limit':                1.,
-                'dropout':              dropout,
-                'input_columns':        input_columns,
-                'types':                types,
-                # Preprocessing params:
-                'dataset':              dataset,
-                'transform':            transform,
-                'max_mz':               spec_max_mz,
-                'min_intensity':        min_intensity,
-                'max_num_peaks':        max_num_peaks,
-                'normalize_intensity':  normalize_intensity,
-                'normalize_mass':       normalize_mass,
-                'rescale_intensity':    rescale_intensity,
-                # Training parameters:
-                'n_samples':            n_samples,
-                'n_epochs':             n_epochs,
-                'batch_size':           batch_size,
-                'learning_rate':        learning_rate,
-            }
+                print("Train model:")
+                print("layers: ", layers)
+                print("learning_rate: ", learning_rate)
 
-            # Create model:
-            model = SpecVEA(config, device)
-            paths = train.prepare_training_session(model, subdirectory=dataset, session_name=model_name)
+                config = {
+                    # Model params:
+                    'name':                 model_name,
+                    'layer_config':         np.array(layers),
+                    'latent_dim':           layers[0][-1],
+                    'beta':                 beta,
+                    'limit':                1.,
+                    'dropout':              dropout,
+                    'input_columns':        input_columns,
+                    'types':                types,
+                    # Preprocessing params:
+                    'dataset':              dataset,
+                    'transform':            transform,
+                    'max_mz':               spec_max_mz,
+                    'min_intensity':        min_intensity,
+                    'max_num_peaks':        max_num_peaks,
+                    'normalize_intensity':  normalize_intensity,
+                    'normalize_mass':       normalize_mass,
+                    'rescale_intensity':    rescale_intensity,
+                    # Training parameters:
+                    'n_samples':            n_samples,
+                    'n_epochs':             n_epochs,
+                    'batch_size':           batch_size,
+                    'learning_rate':        learning_rate,
+                }
 
-            profiler = None
-            if enable_profiler:
-                profiler = torch.profiler.profile(
-                    schedule=torch.profiler.schedule(wait=2, warmup=2, active=6, repeat=2),
-                    on_trace_ready=torch.profiler.tensorboard_trace_handler(paths['training_path']),
-                    record_shapes=True,
-                    with_stack=True)
+                # Create model:
+                model = SpecVEA(config, device)
+                paths = train.prepare_training_session(model, subdirectory=dataset, session_name=model_name)
 
-            writer = SummaryWriter(
-                log_dir=paths['training_path'], 
-                flush_secs=10)
-            
-            trainer = VAETrainer(model, writer)
-            trainer.compile(
-                optimizer=optim.Adam(model.parameters(), lr=learning_rate),
-                metrics=['loss', 'kldiv', 'recon'],
-                evaluation_metrics=['cos_sim', 'eu_dist', 'per_chag', 'per_diff'])
+                profiler = None
+                if enable_profiler:
+                    profiler = torch.profiler.profile(
+                        schedule=torch.profiler.schedule(wait=2, warmup=2, active=6, repeat=2),
+                        on_trace_ready=torch.profiler.tensorboard_trace_handler(paths['training_path']),
+                        record_shapes=True,
+                        with_stack=True)
 
-            # Train the model:
-            history = trainer.fit(
-                train_loader, epochs=n_epochs, 
-                batch_size=batch_size, 
-                validation_data=valid_loader, 
-                log_freq=10, 
-                visualization=lambda model, data_batch, dirpath, epoch: visualize.plot_spectra_grid(
-                   model, data_batch, dirpath, epoch, device, transform=revtrans),
-                dirpath=paths['img_path'], 
-                profiler=profiler)
+                writer = SummaryWriter(
+                    log_dir=paths['training_path'], 
+                    flush_secs=10)
+                
+                trainer = VAETrainer(model, writer)
+                trainer.compile(
+                    optimizer=optim.Adam(model.parameters(), lr=learning_rate),
+                    metrics=['loss', 'kldiv', 'recon'],
+                    evaluation_metrics=['cos_sim', 'eu_dist', 'per_chag', 'per_diff'])
 
-            train.export_training_session(trainer, paths, 
-                train_loader, valid_loader, test_loader, n_samples, 
-                metrics=['loss', 'kldiv', 'recon'],
-                evaluation_metrics=['cos_sim', 'eu_dist', 'per_chag', 'per_diff'])
+                # Train the model:
+                history = trainer.fit(
+                    train_loader, epochs=n_epochs, 
+                    batch_size=batch_size, 
+                    validation_data=valid_loader, 
+                    log_freq=10, 
+                    visualization=lambda model, data_batch, dirpath, epoch: visualize.plot_spectra_grid(
+                    model, data_batch, dirpath, epoch, device, transform=revtrans),
+                    dirpath=paths['img_path'], 
+                    profiler=profiler)
+
+                train.export_training_session(trainer, paths, 
+                    train_loader, valid_loader, test_loader, n_samples, 
+                    session=session,
+                    metrics=['loss', 'kldiv', 'recon'],
+                    evaluation_metrics=['cos_sim', 'eu_dist', 'per_chag', 'per_diff'])
+
+        else:
+            print('Skip training for outer configuration...')
 
     return 0
 

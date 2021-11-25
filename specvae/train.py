@@ -532,7 +532,7 @@ def prepare_training_session(model, subdirectory=None, session_name=None):
 
 def export_training_session(trainer, paths, 
     train_loader=None, valid_loader=None, test_loader=None, 
-        n_mol=100, metrics=[], evaluation_metrics=[]):
+        n_mol=100, metrics=[], evaluation_metrics=[], session=None):
 
     from . import visualize as vis
     import json
@@ -655,7 +655,8 @@ def export_training_session(trainer, paths,
     # Save CSV file:
     try:
         import pandas as pd
-        stats_file = os.path.join(paths['model_dir'], 'experiment.csv')
+        f_name = 'experiment.csv' if session is None else ('experiment%d.csv' % session)
+        stats_file = os.path.join(paths['model_dir'], f_name)
         cols = list(rhparams.keys()) + ['param_' + name for name in hparams.keys()] + ['m_' + name for name in fmetric.keys()]
         vals = list(rhparams.values()) + list(hparams.values()) + list(fmetric.values())
         df2 = pd.DataFrame([vals], columns=cols)
