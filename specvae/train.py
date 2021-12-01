@@ -92,6 +92,29 @@ class Trainer:
         self.metric_names = evaluation_metrics
         for m in self.metric_names:
             self.metric_funcs[m] = getattr(mcs, m)
+
+    def clear(self):
+        import gc
+        self._optimizer_to(torch.device('cpu'))
+        self.model.to(torch.device('cpu'))
+        del self.model
+        del self.optimizer
+        gc.collect()
+        torch.cuda.empty_cache()
+
+    def _optimizer_to(self, device):
+        for param in self.optimizer.state.values():
+            # Not sure there are any global tensors in the state dict
+            if isinstance(param, torch.Tensor):
+                param.data = param.data.to(device)
+                if param._grad is not None:
+                    param._grad.data = param._grad.data.to(device)
+            elif isinstance(param, dict):
+                for subparam in param.values():
+                    if isinstance(subparam, torch.Tensor):
+                        subparam.data = subparam.data.to(device)
+                        if subparam._grad is not None:
+                            subparam._grad.data = subparam._grad.data.to(device)
     
     def train_step(self, epoch, step, data_batch):
         loss, y_true, y_pred, values = self.model_forward(data_batch)
@@ -475,15 +498,15 @@ class JointVAETrainer(Trainer):
 
 
 
-def get_training_path(base, model):
+def get_training_path(base, model, session=''):
     layer_string = model.get_layer_string()
     model_name = model.get_name()
     now = datetime.now()
     dt = now.strftime("%d-%m-%Y_%H-%M-%S")
-    full_model_name = '%s_%s (%s)' % (model_name, layer_string, dt)
+    full_model_name = '%s_%s_%s (%s)' % (model_name, layer_string, session, dt)
     return os.path.join(base, full_model_name), full_model_name
 
-def prepare_training_session(model, subdirectory=None, session_name=None):
+def prepare_training_session(model, subdirectory=None, session_name=None, session=''):
     # Create paths and files:
     paths = {}
     paths['model_dir'] = os.path.join(utils.get_project_path(), '.model')
@@ -493,13 +516,13 @@ def prepare_training_session(model, subdirectory=None, session_name=None):
         paths['model_dir'] = os.path.join(paths['model_dir'], session_name)
 
     if not os.path.exists(paths['model_dir']):
-        os.makedirs(paths['model_dir'])
-    training_path, full_model_name = get_training_path(paths['model_dir'], model)
+        os.makedirs(paths['model_dir'], exist_ok=True)
+    training_path, full_model_name = get_training_path(paths['model_dir'], model, session)
     paths['full_model_name'] = full_model_name
     paths['training_path'] = training_path
     paths['img_path'] = os.path.join(paths['training_path'], 'img')
     # os.makedirs(paths['training_path'])
-    os.makedirs(paths['img_path'])
+    os.makedirs(paths['img_path'], exist_ok=True)
 
     paths['model_filename'] = 'model.pth'
     paths['plot_train_loss_filename'] = 'train_loss.png'
@@ -530,10 +553,52 @@ def prepare_training_session(model, subdirectory=None, session_name=None):
     return paths
 
 
+
+def export_training_parameters(config, paths, session=None):
+    # Collect numeric and remaining parameters:
+    hparams, rhparams = {}, {}
+    for key, item in config.items():
+        if type(item) is str:
+            rhparams[key] = item
+        if type(item) in (int, float, bool):
+            hparams[key] = item
+    # Collect remaining parameters:
+    if 'full_model_name' in paths:
+        rhparams['full_model_name'] = paths['full_model_name']
+    if 'layer_config' in config:
+        rhparams['layer_config'] = config['layer_config'].tolist()
+    if 'input_columns' in config:
+        rhparams['input_columns'] = config['input_columns']
+    if 'class_subset' in config:
+        rhparams['class_subset'] = config['class_subset']
+    return hparams, rhparams
+
+
+def export_to_csv(hparams, rhparams, fmetric, paths, session=None, filepath=None):
+     # Save CSV file:
+    import pandas as pd
+    if filepath is None:
+        f_name = 'experiment.csv' if session is None else ('experiment%s.csv' % session)
+        filepath = os.path.join(paths['model_dir'], f_name)
+    try:
+        cols = list(rhparams.keys()) + ['param_' + name for name in hparams.keys()] + ['m_' + name for name in fmetric.keys()]
+        vals = list(rhparams.values()) + list(hparams.values()) + list(fmetric.values())
+        df2 = pd.DataFrame([vals], columns=cols)
+        if os.path.exists(filepath):
+            df = pd.read_csv(filepath, index_col=0)
+            df = pd.concat([df, df2], ignore_index=True)
+            df.to_csv(filepath)
+        else:
+            df2.to_csv(filepath)
+        return True
+    except Exception as e:
+        print("Error while adding record to", filepath, e)
+        return False
+
+
 def export_training_session(trainer, paths, 
     train_loader=None, valid_loader=None, test_loader=None, 
         n_mol=100, metrics=[], evaluation_metrics=[], session=None):
-
     from . import visualize as vis
     import json
     model = trainer.model
@@ -543,24 +608,7 @@ def export_training_session(trainer, paths,
     # Evaluation mode:
     if hasattr(model, 'eval'):
         model.eval()
-    
-    # Collect numeric and remaining parameters:
-    hparams = {}
-    rhparams = {}
-    for key, item in model.config.items():
-        if type(item) is str:
-            rhparams[key] = item
-        if type(item) in (int, float, bool):
-            hparams[key] = item
-
-    # Collect remaining parameters:
-    if 'full_model_name' in paths:
-        rhparams['full_model_name'] = paths['full_model_name']
-    if 'layer_config' in model.config:
-        rhparams['layer_config'] = model.config['layer_config'].tolist()
-    if 'input_columns' in model.config:
-        rhparams['input_columns'] = model.config['input_columns']
-
+    hparams, rhparams = export_training_parameters(model.config, paths, session)
     # Compute metrics against average sample:
     def compute_metrics_for_average_sample(loader, metrics):
         vals = {}
@@ -574,42 +622,42 @@ def export_training_session(trainer, paths,
         except:
             print("Unable to compute metrics for average sample...")
             return None
-    
+
+    def extract(value):
+        return value.item() if torch.is_tensor(value) else value
     # Evaluate model:
-    metric = {}
-    fmetric = {}
+    metric, fmetric = {}, {}
     from .vae import BaseVAE
     if test_loader is not None:
         train_e = trainer.evaluate(train_loader, metrics, evaluation_metrics)
         for key, item in train_e.items():
-            metric['model/train/' + key] = item
-            fmetric['train_' + key] = item
+            metric['model/train/' + key] = extract(item)
+            fmetric['train_' + key] = extract(item)
         if isinstance(model, BaseVAE):
             train_avg = compute_metrics_for_average_sample(train_loader, evaluation_metrics)
             if train_avg is not None:
                 for key, item in train_avg.items():
-                    fmetric['train_avg_' + key] = item
+                    fmetric['train_avg_' + key] = extract(item)
     if valid_loader is not None:
         valid_e = trainer.evaluate(valid_loader, metrics, evaluation_metrics)
         for key, item in valid_e.items():
-            metric['model/valid/' + key] = item
-            fmetric['valid_' + key] = item
+            metric['model/valid/' + key] = extract(item)
+            fmetric['valid_' + key] = extract(item)
         if isinstance(model, BaseVAE):
             valid_avg = compute_metrics_for_average_sample(valid_loader, evaluation_metrics)
             if valid_avg is not None:
                 for key, item in valid_avg.items():
-                    fmetric['valid_avg_' + key] = item
+                    fmetric['valid_avg_' + key] = extract(item)
     if test_loader is not None:
         test_e = trainer.evaluate(test_loader, metrics, evaluation_metrics)
         for key, item in test_e.items():
-            metric['model/test/' + key] = item
-            fmetric['test_' + key] = item
+            metric['model/test/' + key] = extract(item)
+            fmetric['test_' + key] = extract(item)
         if isinstance(model, BaseVAE):
             test_avg = compute_metrics_for_average_sample(test_loader, evaluation_metrics)
             if test_avg is not None:
                 for key, item in test_avg.items():
-                    fmetric['test_avg_' + key] = item
-
+                    fmetric['test_avg_' + key] = extract(item)
     # Write the summary:
     with open(os.path.join(paths['training_path'], 'summary.txt'), 'w+') as summary:
         if hasattr(model, 'get_layer_string'):
@@ -641,7 +689,6 @@ def export_training_session(trainer, paths,
             summary.write('\t VALID:' + str(valid_e) + '\n')
         if test_loader is not None:
             summary.write('\t  TEST:' + str(test_e) + '\n')
-
     # Visualize reconstruction results:
     # Plot metrics:
     if hasattr(trainer, 'history'):
@@ -651,24 +698,9 @@ def export_training_session(trainer, paths,
         vis.plot_history(trainer.history, 'epoch_loss', paths['plot_train_loss_filepath'])
         vis.plot_history(trainer.history, 'epoch_val_loss', paths['plot_val_loss_filepath'])
         vis.plot_history_2combined(trainer.history, 'epoch_loss', 'epoch_val_loss', paths['plot_train_val_loss_filepath'])
-
     # Save CSV file:
-    try:
-        import pandas as pd
-        f_name = 'experiment.csv' if session is None else ('experiment%d.csv' % session)
-        stats_file = os.path.join(paths['model_dir'], f_name)
-        cols = list(rhparams.keys()) + ['param_' + name for name in hparams.keys()] + ['m_' + name for name in fmetric.keys()]
-        vals = list(rhparams.values()) + list(hparams.values()) + list(fmetric.values())
-        df2 = pd.DataFrame([vals], columns=cols)
-        if os.path.exists(stats_file):
-            df = pd.read_csv(stats_file, index_col=0)
-            df = pd.concat([df, df2], ignore_index=True)
-            df.to_csv(stats_file)
-        else:
-            df2.to_csv(stats_file)
-    except Exception as e:
-        print("Error while adding record to experiment.csv:", e)
-
+    if export_to_csv(hparams, rhparams, fmetric, paths, session):
+        print("Successfully exported training session to csv file.")
     if trainer.writer is not None:
         trainer.writer.add_hparams(hparams, metric)
         trainer.writer.close()

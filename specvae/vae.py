@@ -56,6 +56,8 @@ class VAELoss(nn.Module):
 
     def forward_(self, input, target, latent_dist):
         mean, logvar = latent_dist
+        if torch.isnan(input).any():
+            raise ValueError("input for VAELoss contains nan elements")
         # E[log P(X|z)]
         recon = torch.sum(F.binary_cross_entropy(input, target, reduction='none'), dim=1).mean()
         # D_KL(Q(z|X) || P(z|X))

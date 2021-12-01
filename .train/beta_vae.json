@@ -1,0 +1,101 @@
+{
+    "name": "beta_vae",
+    "environment": "specvae",
+    "script": "specvae/train_vae_single.py",
+    "resume_setting": {
+        "--dataset": "dataset",
+        "--n-samples": "param_n_samples",
+        "--max-mz": "param_max_mz",
+        "--n-peaks": "param_max_num_peaks",
+        "--min-intensity": "param_min_intensity",
+        "--rescale-intensity": "param_rescale_intensity",
+        "--normalize-intensity": "param_normalize_intensity",
+        "--normalize-mass": "param_normalize_mass",
+        "--n-epochs": "param_n_epochs",
+        "--batch-size": "param_batch_size",
+        "--learning-rate": "param_learning_rate",
+        "--layer-config": "layer_config",
+        "--beta": "param_beta"
+    },
+    "parameters": {
+        "--model-name": "beta_vae",
+        "--dataset": "MoNA",
+        "--n-samples": -1,
+        "--max-mz": 2500.0,
+        "--n-peaks": [10, 15, 25, 50, 100],
+        "--min-intensity": [0.001, 0.01, 0.1, 0.2, 0.5, 1.0],
+        "--rescale-intensity": [true, false],
+        "--normalize-intensity": true,
+        "--normalize-mass": true,
+        "--n-epochs": 20,
+        "--batch-size": 128,
+        "--learning-rate": 0.001,
+        "--layer-config": [
+            "[[$indim, 15, 3], [3, 15, $indim]]",
+            "[[$indim, 15, 4], [4, 15, $indim]]",
+            "[[$indim, 15, 5], [5, 15, $indim]]",
+            "[[$indim, 15, 10], [10, 15, $indim]]",
+            "[[$indim, 3], [3, $indim]]",
+            "[[$indim, 15, 10, 3], [3, 10, 15, $indim]]",
+            "[[$indim, 15, 10, 5, 3], [3, 5, 10, 15, $indim]]",
+            "[[$indim, 15, 3], [3, $indim]]",
+            "[[$indim, 3], [3, 15, $indim]]",
+            "[[$indim, 10, 3], [3, 10, 15, $indim]]",
+            "[[$indim, 15, 10, 3], [3, 10, $indim]]"
+        ]
+    },
+    "sessions": [
+        {
+            "--session": "01",
+            "--use-cuda": false,
+            "--beta": [0.01]
+        },
+        {
+            "--session": "02",
+            "--use-cuda": false,
+            "--beta": [0.1]
+        },
+        {
+            "--session": "03",
+            "--use-cuda": true,
+            "--gpu-device": 0,
+            "--beta": [0.2]
+        },
+        {
+            "--session": "04",
+            "--use-cuda": true,
+            "--gpu-device": 1,
+            "--beta": [0.5]
+        },
+        {
+            "--session": "05",
+            "--use-cuda": true,
+            "--gpu-device": 2,
+            "--beta": [1.0]
+        },
+        {
+            "--session": "06",
+            "--use-cuda": true,
+            "--gpu-device": 3,
+            "--beta": [2.0]
+        },
+        {
+            "--session": "07",
+            "--use-cuda": true,
+            "--gpu-device": 0,
+            "--beta": [100.0]
+        },
+        {
+            "--session": "08",
+            "--use-cuda": true,
+            "--gpu-device": 1,
+            "--beta": [5.0]
+        },
+        {
+            "--session": "09",
+            "--use-cuda": true,
+            "--gpu-device": 2,
+            "--beta": [10.0]
+        }
+    ]
+}

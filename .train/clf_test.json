@@ -1,0 +1,96 @@
+{
+    "name": "clf",
+    "environment": "specvae",
+    "script": "specvae/train_classifier_single.py",
+    "resume_setting": {
+        "--dataset": "dataset",
+        "--n-samples": "param_n_samples",
+        "--max-mz": "param_max_mz",
+        "--n-peaks": "param_max_num_peaks",
+        "--min-intensity": "param_min_intensity",
+        "--rescale-intensity": "param_rescale_intensity",
+        "--normalize-intensity": "param_normalize_intensity",
+        "--normalize-mass": "param_normalize_mass",
+        "--n-epochs": "param_n_epochs",
+        "--batch-size": "param_batch_size",
+        "--learning-rate": "param_learning_rate",
+        "--layer-config": "layer_config"
+    },
+    "parameters": {
+        "--model-name": "clf",
+        "--dataset": "MoNA",
+        "--n-samples": 2000,
+        "--max-mz": 2500.0,
+        "--n-peaks": [30],
+        "--min-intensity": [0.1],
+        "--rescale-intensity": [false],
+        "--normalize-intensity": true,
+        "--normalize-mass": true,
+        "--n-epochs": 5,
+        "--batch-size": 128,
+        "--learning-rate": 0.001,
+        "--input-columns": "['spectrum', 'collision_energy', 'total_exact_mass', 'precursor_mz', 'ionization_mode_id', 'instrument_id', 'instrument_type_id', 'precursor_type_id', 'kingdom_id', 'superclass_id', 'class_id']"
+    },
+    "sessions": [
+        {
+            "--session": "01",
+            "--use-cuda": false,
+            "--target-column": {
+                "--target-column":          "--class-subset",
+                "ionization_mode_id":       []
+            }
+        },
+        {
+            "--session": "02",
+            "--use-cuda": false,
+            "--target-column": {
+                "--target-column":          "--class-subset",
+                "instrument_id":            [0, 129, 130, 155, 161, 133, 122, 157, 136, 116, 115, 135]
+            }
+        },
+        {
+            "--session": "03",
+            "--use-cuda": false,
+            "--target-column": {
+                "--target-column":          "--class-subset",
+                "instrument_type_id":       [1, 0, 7, 2, 10, 17, 12]
+            }
+        },
+        {
+            "--session": "04",
+            "--use-cuda": true,
+            "--gpu-device": 0,
+            "--target-column": {
+                "--target-column":          "--class-subset",
+                "precursor_type_id":        [2, 3, 4, 1, 0, 28]
+            }
+        },
+        {
+            "--session": "05",
+            "--use-cuda": true,
+            "--gpu-device": 1,
+            "--target-column": {
+                "--target-column":          "--class-subset",
+                "kingdom_id":               []
+            }
+        },
+        {
+            "--session": "06",
+            "--use-cuda": true,
+            "--gpu-device": 2,
+            "--target-column": {
+                "--target-column":          "--class-subset",
+                "superclass_id":            [6, 18, 14, 1, 10, 12, 0, 7, 5]
+            }
+        },
+        {
+            "--session": "07",
+            "--use-cuda": true,
+            "--gpu-device": 3,
+            "--target-column": {
+                "--target-column":          "--class-subset",
+                "class_id":                 [198, 96, 32, 173, 61, 238, 94, 70, 106, 131, 65, 124, 43, 172, 190]
+            }
+        }
+    ]
+}

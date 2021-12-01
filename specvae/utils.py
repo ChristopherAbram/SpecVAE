@@ -27,6 +27,11 @@ def cosine_similarity(x_true_batch, x_pred_batch):
     cs = smp.cosine_similarity(x_true_batch, x_pred_batch)
     return np.trace(cs) / x_true_batch.shape[0]
 
+def boolean_string(s):
+    if s not in {'False', 'false', 'True', 'true'}:
+        raise ValueError('Not a valid boolean string')
+    return s == 'True' or s == 'true'
+
 
 def device(use_cuda = True, dev_name='cuda:0'):
     cpu_device = torch.device('cpu')

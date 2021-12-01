@@ -1,0 +1,51 @@
+{
+    "name": "reg_test",
+    "environment": "specvae",
+    "script": "specvae/train_regressor_single.py",
+    "resume_setting": {
+        "--dataset": "dataset",
+        "--n-samples": "param_n_samples",
+        "--max-mz": "param_max_mz",
+        "--n-peaks": "param_max_num_peaks",
+        "--min-intensity": "param_min_intensity",
+        "--rescale-intensity": "param_rescale_intensity",
+        "--normalize-intensity": "param_normalize_intensity",
+        "--normalize-mass": "param_normalize_mass",
+        "--n-epochs": "param_n_epochs",
+        "--batch-size": "param_batch_size",
+        "--learning-rate": "param_learning_rate",
+        "--layer-config": "layer_config"
+    },
+    "parameters": {
+        "--model-name": "reg_test",
+        "--dataset": "MoNA",
+        "--n-samples": 5000,
+        "--max-mz": 2500.0,
+        "--n-peaks": [25],
+        "--min-intensity": [0.1],
+        "--rescale-intensity": [false],
+        "--normalize-intensity": true,
+        "--normalize-mass": true,
+        "--n-epochs": 5,
+        "--batch-size": 128,
+        "--learning-rate": 0.001,
+        "--input-columns": "['spectrum', 'collision_energy', 'total_exact_mass', 'precursor_mz', 'ionization_mode_id', 'instrument_id', 'instrument_type_id', 'precursor_type_id', 'kingdom_id', 'superclass_id', 'class_id']"
+    },
+    "sessions": [
+        {
+            "--session": "01",
+            "--use-cuda": false,
+            "--target-column": "collision_energy"
+        },
+        {
+            "--session": "02",
+            "--use-cuda": false,
+            "--target-column": "total_exact_mass"
+        },
+        {
+            "--session": "03",
+            "--use-cuda": false,
+            "--target-column": "precursor_mz"
+        }
+    ]
+}
