@@ -44,15 +44,11 @@ class BaseRegressor(BaseModel):
         return self.forward(x)
 
     def score(self, X, y, sample_weight=None):
-        from sklearn.metrics import mean_squared_error
-        if torch.is_tensor(X):
-            y_pred = self.predict(X)
-        else:
-            X_ = torch.from_numpy(X)
-            y_pred = self.predict(X_)
-        y, y_pred = y.data.cpu().numpy(), y_pred.data.cpu().numpy()
-        # RMSE
-        return mean_squared_error(y, y_pred, sample_weight=sample_weight, squared=False)
+        from sklearn.metrics._scorer import neg_mean_squared_error_scorer
+        with torch.no_grad():
+            if not torch.is_tensor(X):
+                X = torch.from_numpy(X)
+            return neg_mean_squared_error_scorer(self, X, y, sample_weight=sample_weight)
 
     def get_layer_string(self):
         return '-'.join(str(x) for x in self.layer_config) + '-1'

@@ -91,14 +91,11 @@ class BaseClassifier(BaseModel):
         ...
 
     def score(self, X, y, sample_weight=None):
-        from sklearn.metrics import accuracy_score
-        if torch.is_tensor(X):
-            y_pred = self.predict(X)
-        else:
-            X_ = torch.from_numpy(X)
-            y_pred = self.predict(X_)
-        y, y_pred = y.data.cpu().numpy(), y_pred.data.cpu().numpy()
-        return accuracy_score(y, y_pred, sample_weight=sample_weight)
+        from sklearn.metrics._scorer import accuracy_scorer
+        with torch.no_grad():
+            if not torch.is_tensor(X):
+                X = torch.from_numpy(X)
+            return accuracy_scorer(self, X, y, sample_weight=sample_weight)
 
     def get_layer_string(self):
         return '-'.join(str(x) for x in self.layer_config) + '-' + (str(self.n_classes) if self.n_classes > 2 else '1')
