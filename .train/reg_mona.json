@@ -1,0 +1,34 @@
+{
+    "name": "reg_mona",
+    "environment": "specvae",
+    "script": "specvae/train_regressor_single.py",
+    "parameters": {
+        "--model-name": "reg",
+        "--dataset": "MoNA",
+        "--n-samples": -1,
+        "--max-mz": 2500.0,
+        "--n-peaks": [10, 15, 25, 50, 100],
+        "--min-intensity": [0.001, 0.01, 0.1, 0.2, 0.5, 1.0],
+        "--rescale-intensity": [true, false],
+        "--normalize-intensity": true,
+        "--normalize-mass": true,
+        "--n-epochs": 30,
+        "--batch-size": 128,
+        "--learning-rate": 0.001,
+        "--input-columns": "['spectrum', 'collision_energy', 'total_exact_mass', 'precursor_mz', 'ionization_mode_id', 'instrument_id', 'instrument_type_id', 'precursor_type_id', 'kingdom_id', 'superclass_id', 'class_id']"
+    },
+    "sessions": [
+        {
+            "--session": "01",
+            "--use-cuda": false,
+            "--gpu-device": 3,
+            "--target-column": ["collision_energy", "precursor_mz"]
+        },
+        {
+            "--session": "02",
+            "--use-cuda": false,
+            "--gpu-device": 1,
+            "--target-column": "total_exact_mass"
+        }
+    ]
+}

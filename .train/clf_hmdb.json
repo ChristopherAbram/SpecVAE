@@ -1,0 +1,42 @@
+{
+    "name": "clf_hmdb",
+    "environment": "specvae",
+    "script": "specvae/train_classifier_single.py",
+    "parameters": {
+        "--model-name": "clf",
+        "--dataset": "HMDB",
+        "--n-samples": -1,
+        "--max-mz": 2500.0,
+        "--n-peaks": [10, 15, 25, 50],
+        "--min-intensity": [0.001, 0.01, 0.1, 0.2, 0.5, 1.0],
+        "--rescale-intensity": [true, false],
+        "--normalize-intensity": true,
+        "--normalize-mass": true,
+        "--n-epochs": 30,
+        "--batch-size": 128,
+        "--learning-rate": 0.001,
+        "--input-columns": "['spectrum', 'collision_energy', 'ionization_mode_id', 'kingdom_id', 'superclass_id', 'class_id']"
+    },
+    "sessions": [
+        {
+            "--session": "01",
+            "--use-cuda": true,
+            "--gpu-device": 3,
+            "--target-column": {
+                "--target-column":          "--class-subset",
+                "ionization_mode_id":       [],
+                "kingdom_id":               []
+            }
+        },
+        {
+            "--session": "02",
+            "--use-cuda": true,
+            "--gpu-device": 3,
+            "--target-column": {
+                "--target-column":          "--class-subset",
+                "superclass_id":            [7, 17, 21, 12, 14, 1],
+                "class_id":                 [87, 88, 179, 78, 159, 48, 80, 209, 23]
+            }
+        }
+    ]
+}

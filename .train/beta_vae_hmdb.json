@@ -1,13 +1,13 @@
 {
-    "name": "beta_vae",
+    "name": "betavae_hmdb",
     "environment": "specvae",
     "script": "specvae/train_vae_single.py",
     "parameters": {
         "--model-name": "beta_vae",
-        "--dataset": "MoNA",
+        "--dataset": "HMDB",
         "--n-samples": -1,
         "--max-mz": 2500.0,
-        "--n-peaks": [10, 15, 25, 50, 100],
+        "--n-peaks": [10, 15, 25, 50],
         "--min-intensity": [0.001, 0.01, 0.1, 0.2, 0.5, 1.0],
         "--rescale-intensity": [true, false],
         "--normalize-intensity": true,
@@ -32,18 +32,20 @@
     "sessions": [
         {
             "--session": "01",
-            "--use-cuda": false,
+            "--use-cuda": true,
+            "--gpu-device": 0,
             "--beta": [0.01]
         },
         {
             "--session": "02",
-            "--use-cuda": false,
+            "--use-cuda": true,
+            "--gpu-device": 0,
             "--beta": [0.1]
         },
         {
             "--session": "03",
             "--use-cuda": true,
-            "--gpu-device": 0,
+            "--gpu-device": 1,
             "--beta": [0.2]
         },
         {
@@ -61,26 +63,14 @@
         {
             "--session": "06",
             "--use-cuda": true,
-            "--gpu-device": 3,
+            "--gpu-device": 2,
             "--beta": [2.0]
         },
         {
             "--session": "07",
             "--use-cuda": true,
-            "--gpu-device": 0,
-            "--beta": [100.0]
-        },
-        {
-            "--session": "08",
-            "--use-cuda": true,
-            "--gpu-device": 1,
+            "--gpu-device": 3,
             "--beta": [5.0]
-        },
-        {
-            "--session": "09",
-            "--use-cuda": true,
-            "--gpu-device": 2,
-            "--beta": [10.0]
         }
     ]
 }
