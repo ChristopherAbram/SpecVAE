@@ -16,10 +16,7 @@ from specvae.train import RegressorTrainer
 
 def load_metadata(dataset):
     import os
-    if dataset == 'MoNA':
-        metadata_path = utils.get_project_path() / '.data' / 'MoNA' / 'MoNA_meta.npy'
-    elif dataset == 'HMDB':
-        metadata_path = utils.get_project_path() / '.data' / 'HMDB' / 'HMDB_meta.npy'
+    metadata_path = utils.get_project_path() / '.data' / dataset / ('%s_meta.npy' % dataset)
     metadata = None
     if os.path.exists(metadata_path):
         metadata = np.load(metadata_path, allow_pickle=True).item()

@@ -104,3 +104,69 @@ cos_sim = cosine_similarity
 eu_dist = euclidean_distance
 per_chag = mean_percentage_change
 per_diff = mean_percentage_difference
+
+
+from sklearn.inspection import permutation_importance
+import logging
+import os
+
+class PFI:
+    def __init__(self, base_path, n_samples=3000, n_repeats=10):
+        self.base_path = base_path
+        self.n_samples = n_samples
+        self.n_repeats = n_repeats
+
+    def compute_pfi(self, model_name):
+        model = self.load_model(self.base_path, model_name)
+        X, y, ids = self.load_data(model, self.n_samples)
+        if X is None:
+            raise ValueError("Unable to load data")
+        fi = self.pfi(model, X, y, self.n_repeats)
+        logging.info("PFI for %s completed" % model_name)
+        return str(fi)
+
+    @staticmethod
+    def load_model(base_path, model_name):
+        from .model import BaseModel
+        print("Load model: %s..." % model_name)
+        model_path = os.path.join(base_path, model_name, 'model.pth')
+        model = BaseModel.load(model_path, torch.device('cpu'))
+        model.eval()
+        return model
+
+    @staticmethod
+    def load_data(model, n_samples=3000):
+        from .classifier import BaseClassifier
+        from .regressor import BaseRegressor
+        from . import dataset as dt
+        from . import utils
+        input_columns = model.config['input_columns']
+        target_column_id = model.config['target_column_id']
+        target_column = model.config['target_column']
+        class_subset = model.config['class_subset'] if 'class_subset' in model.config else []
+        dataset = model.config['dataset']
+        types = model.config['types']
+        columns = input_columns + [target_column_id]
+        base_path = utils.get_project_path() / '.data' / dataset
+        metadata_path = base_path / ('%s_meta.npy' % dataset)
+        metadata = None
+        if os.path.exists(metadata_path):
+            metadata = np.load(metadata_path, allow_pickle=True).item()
+        device = torch.device('cpu')
+        if isinstance(model, BaseClassifier):
+            train_data, valid_data, test_data, metadata, cw = dt.load_data_classification(
+                dataset, model.transform, n_samples, int(1e7), False, device, input_columns, types, target_column_id, True, class_subset)
+        elif isinstance(model, BaseRegressor):
+            train_data, valid_data, test_data, metadata = dt.load_data_regression(
+                dataset, model.transform, n_samples, int(1e7), False, device, input_columns, types, target_column, True)
+        X, y, ids = next(iter(test_data))
+        return X, y, ids
+
+    @staticmethod
+    def pfi(model, X, y, n_repeats=10):
+        input_columns = model.config['input_columns']
+        input_sizes = model.config['input_sizes']
+        pi = permutation_importance(model, X, y, n_repeats=10, random_state=0)
+        u = np.array([0] + input_sizes)
+        s = {input_columns[i-1]: pi.importances_mean[u[:i].sum():u[:i+1].sum()].sum() for i in range(1, len(u))}
+        return dict(sorted(s.items(), key=lambda item: item[1]))

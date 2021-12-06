@@ -14,10 +14,8 @@ def dict_product(dicts):
 def run_session(parameters, config):
     path = utils.get_project_path()
     name = config['name']
-    session_name = parameters['--session']
-    dataset = parameters['--dataset']
     script = config['script']
-    resume_setting = config['resume_setting'] if 'resume_setting' in config else None
+    session_name = parameters['--session']
 
     # Prepare parameters:
     non_array_params = {name: value for name, value in parameters.items() if not isinstance(value, list) and not isinstance(value, dict)}
@@ -116,7 +114,7 @@ def main(argc, argv):
     parser = argparse.ArgumentParser(description="...")
     parser.add_argument('--config-file', type=str, 
         help='Path to training session json file', 
-        default=str(utils.get_project_path() / '.train' / 'reg_test.json'))
+        default=str(utils.get_project_path() / '.train' / 'reg_hmdb.json'))
     args = parser.parse_args()
 
     # Parameters:
@@ -153,6 +151,7 @@ def main(argc, argv):
     for th in ths:
         th.join()
 
+    logging.info("DONE!")
     return 0
 
 
