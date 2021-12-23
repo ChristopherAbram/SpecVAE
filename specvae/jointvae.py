@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from collections import OrderedDict
 
-from vae import BaseVAE, ReLUlimit
+from .vae import BaseVAE, ReLUlimit
 
 EPS = 1e-12
 

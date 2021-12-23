@@ -30,6 +30,7 @@ class BaseRegressor(BaseModel):
             layers.append(('en_act_%d' % i, nn.ReLU()))
         in_dim, out_dim = self.layer_config[layers_num - 1], 1
         layers.append(('en_lin_%d' % layers_num, nn.Linear(in_dim, out_dim)))
+        self.input_size = self.layer_config[0]
         self.layers = nn.Sequential(OrderedDict(layers))
         self.loss = BaseRegressorCriterium()
 

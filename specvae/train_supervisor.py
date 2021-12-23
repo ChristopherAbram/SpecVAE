@@ -114,7 +114,7 @@ def main(argc, argv):
     parser = argparse.ArgumentParser(description="...")
     parser.add_argument('--config-file', type=str, 
         help='Path to training session json file', 
-        default=str(utils.get_project_path() / '.train' / 'reg_hmdb.json'))
+        default=str(utils.get_project_path() / '.train' / 'jointvae_mona.json'))
     args = parser.parse_args()
 
     # Parameters:

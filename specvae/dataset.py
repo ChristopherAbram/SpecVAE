@@ -372,10 +372,8 @@ class MergedDataset(Dataset):
         return torch.cat(d[:-1]), d[-1]
 
 class ClassificationDataset(Dataset):
-    def __init__(self, dataset, input_columns, target_column):
+    def __init__(self, dataset):
         self.dataset = dataset
-        self.x_cols = input_columns
-        self.y_col = target_column
 
     def __len__(self):
         return len(self.dataset)
@@ -384,6 +382,17 @@ class ClassificationDataset(Dataset):
         data = self.dataset[index]
         return torch.cat(data[:-2]), data[-2], data[-1]
 
+class JointTrainingDataset(Dataset):
+    def __init__(self, dataset):
+        self.dataset = dataset
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, index):
+        data = self.dataset[index]
+        feat_ = torch.tensor([]) if len(data) <= 3 else torch.cat(data[1:-2])
+        return data[0], feat_, data[-2], data[-1]
 
 class Spectra(Dataset):
     def __init__(self, transform=None, data=None, columns=None, device=None):
@@ -543,21 +552,22 @@ class HMDB(Spectra):
 from . import utils
 from torch.utils.data import DataLoader, WeightedRandomSampler
 
-
-def load_spectra_data(dataset, transform, n_samples=-1, 
-        device=None, columns=['spectrum'], types=[torch.float32], split=True, df=None):
-    train_data, valid_data, test_data = None, None, None
-    if dataset == 'MoNA':
-        data_path = utils.get_project_path() / '.data' / 'MoNA' / 'MoNA_full.csv'
-        metadata_path = utils.get_project_path() / '.data' / 'MoNA' / 'MoNA_meta.npy'
-    elif dataset == 'HMDB':
-        data_path = utils.get_project_path() / '.data' / 'HMDB' / 'HMDB_full.csv'
-        metadata_path = utils.get_project_path() / '.data' / 'HMDB' / 'HMDB_meta.npy'
-
+def load_metadata(dataset):
+    import os
     metadata = None
+    metadata_path = utils.get_project_path() / '.data' / dataset / ('%s_meta.npy' % dataset)
     if os.path.exists(metadata_path):
         metadata = np.load(metadata_path, allow_pickle=True).item()
-    
+    return metadata
+
+def load_spectra_data(dataset, transform, n_samples=-1, 
+        device=None, columns=['spectrum'], types=[torch.float32], split=True, df=None, filename=None):
+    train_data, valid_data, test_data = None, None, None
+    if filename is None:
+        data_path = utils.get_project_path() / '.data' / dataset / ('%s_full.csv' % dataset)
+    else:
+        data_path = utils.get_project_path() / '.data' / dataset / filename
+    metadata = load_metadata(dataset)
     if split:
         df_train, df_valid, df_test = Spectra.get_by_split(data_path, columns=columns)
         print("Load train data")
@@ -580,11 +590,11 @@ def load_spectra_data(dataset, transform, n_samples=-1,
 
 
 def load_data(dataset, transform, n_samples=-1, batch_size=64, shuffle=True, 
-        device=None, input_columns=['spectrum'], types=[torch.float32], split=True, df=None):
+        device=None, input_columns=['spectrum'], types=[torch.float32], split=True, df=None, filename=None):
 
     if split:
         train_data, valid_data, test_data, metadata = load_spectra_data(
-            dataset, transform, n_samples, device, input_columns, types, True)
+            dataset, transform, n_samples, device, input_columns, types, True, filename=filename)
 
         if train_data is None:
             raise ValueError("No dataset specified, abort!")
@@ -599,7 +609,8 @@ def load_data(dataset, transform, n_samples=-1, batch_size=64, shuffle=True,
                 batch_size=batch_size, shuffle=shuffle)
         return train_loader, valid_loader, test_loader, metadata
     else:
-        data, metadata = load_spectra_data(dataset, transform, n_samples, device, input_columns, types, False, df)
+        data, metadata = load_spectra_data(dataset, transform, n_samples, device, 
+            input_columns, types, False, df, filename=filename)
         if data is None:
             raise ValueError("No dataset specified, abort!")
         loader = DataLoader(
@@ -613,17 +624,8 @@ def load_spectra_data_classification(dataset, transform, n_samples=-1, device=No
         columns=['spectrum'], types=[torch.float32], 
         class_column=None, reject_noclass=True, class_subset=[]):
     train_data, valid_data, test_data = None, None, None
-    if dataset == 'MoNA':
-        data_path = utils.get_project_path() / '.data' / 'MoNA' / 'MoNA_full.csv'
-        metadata_path = utils.get_project_path() / '.data' / 'MoNA' / 'MoNA_meta.npy'
-    elif dataset == 'HMDB':
-        data_path = utils.get_project_path() / '.data' / 'HMDB' / 'HMDB_full.csv'
-        metadata_path = utils.get_project_path() / '.data' / 'HMDB' / 'HMDB_meta.npy'
-    
-    metadata = None
-    if os.path.exists(metadata_path):
-        metadata = np.load(metadata_path, allow_pickle=True).item()
-    
+    data_path = utils.get_project_path() / '.data' / dataset / ('%s_full.csv' % dataset)
+    metadata = load_metadata(dataset)
     df_train, df_valid, df_test = Spectra.get_by_split(data_path, columns=columns)
     if class_column is not None and reject_noclass:
         print("Reject samples with 'no-class' assigned")
@@ -659,17 +661,8 @@ def load_spectra_data_regression(dataset, transform, n_samples=-1, device=None,
         columns=['spectrum'], types=[torch.float32], target_column=None, reject_novalue=True):
     
     train_data, valid_data, test_data = None, None, None
-    if dataset == 'MoNA':
-        data_path = utils.get_project_path() / '.data' / 'MoNA' / 'MoNA_full.csv'
-        metadata_path = utils.get_project_path() / '.data' / 'MoNA' / 'MoNA_meta.npy'
-    elif dataset == 'HMDB':
-        data_path = utils.get_project_path() / '.data' / 'HMDB' / 'HMDB_full.csv'
-        metadata_path = utils.get_project_path() / '.data' / 'HMDB' / 'HMDB_meta.npy'
-    
-    metadata = None
-    if os.path.exists(metadata_path):
-        metadata = np.load(metadata_path, allow_pickle=True).item()
-    
+    data_path = utils.get_project_path() / '.data' / dataset / ('%s_full.csv' % dataset)
+    metadata = load_metadata(dataset)
     df_train, df_valid, df_test = Spectra.get_by_split(data_path, columns=columns)
     if target_column is not None and reject_novalue:
         print("Reject samples with 'no-value' assigned")
@@ -709,8 +702,7 @@ def create_weighted_sampler(data, metadata, class_column, device, class_subset=[
 
 def load_data_classification(dataset, transform, n_samples=-1, batch_size=64, shuffle=True, 
         device=None, input_columns=['spectrum'], types=[torch.float32], 
-        target_column=None, reject_noclass=True, class_subset=[]):
-    
+        target_column=None, reject_noclass=True, class_subset=[], view=ClassificationDataset):
     class_weights = None
     columns = input_columns + [target_column]
     train_data, valid_data, test_data, metadata = load_spectra_data_classification(
@@ -721,32 +713,20 @@ def load_data_classification(dataset, transform, n_samples=-1, batch_size=64, sh
     if target_column is not None:
         if not target_column in metadata:
             raise ValueError("Metadata for dataset '%s' doesn't contain information for target column '%s'" % (dataset, target_column))
-        
         train_weighted_sampler, class_weights = create_weighted_sampler(train_data, metadata, target_column, device, class_subset)
         valid_weighted_sampler, valid_class_weights = create_weighted_sampler(valid_data, metadata, target_column, device, class_subset)
         test_weighted_sampler, test_class_weights = create_weighted_sampler(test_data, metadata, target_column, device, class_subset)
 
         train_loader = DataLoader(
-            ClassificationDataset(
-                dataset=Spectra(data=train_data, device=device, columns=columns), 
-                input_columns=input_columns,
-                target_column=target_column),
+            view(dataset=Spectra(data=train_data, device=device, columns=columns)),
             batch_size=batch_size, 
             sampler=train_weighted_sampler)
-
         valid_loader = DataLoader(
-            ClassificationDataset(
-                dataset=Spectra(data=valid_data, device=device, columns=columns), 
-                input_columns=input_columns,
-                target_column=target_column),
+            view(dataset=Spectra(data=valid_data, device=device, columns=columns)),
             batch_size=batch_size, 
             sampler=valid_weighted_sampler)
-
         test_loader = DataLoader(
-            ClassificationDataset(
-                dataset=Spectra(data=test_data, device=device, columns=columns), 
-                input_columns=input_columns,
-                target_column=target_column),
+            view(dataset=Spectra(data=test_data, device=device, columns=columns)),
             batch_size=batch_size, 
             sampler=test_weighted_sampler)
     else:
@@ -759,7 +739,6 @@ def load_data_classification(dataset, transform, n_samples=-1, batch_size=64, sh
         test_loader = DataLoader(
             Spectra(data=test_data, device=device, columns=columns), 
             batch_size=batch_size, shuffle=shuffle)
-    
     return train_loader, valid_loader, test_loader, metadata, class_weights
 
 
@@ -768,38 +747,25 @@ def load_data_classification(dataset, transform, n_samples=-1, batch_size=64, sh
 
 def load_data_regression(dataset, transform, n_samples=-1, batch_size=64, shuffle=True, 
         device=None, input_columns=['spectrum'], types=[torch.float32], 
-        target_column=None, reject_novalue=True):
+        target_column=None, reject_novalue=True, view=ClassificationDataset):
     
     columns = input_columns + [target_column]
     train_data, valid_data, test_data, metadata = load_spectra_data_regression(
         dataset, transform, n_samples, device, columns, types, target_column, reject_novalue)
     if train_data is None:
         raise ValueError("No dataset specified, abort!")
-
     train_loader = DataLoader(
-        ClassificationDataset(
-            dataset=Spectra(data=train_data, device=device, columns=columns), 
-            input_columns=input_columns,
-            target_column=target_column),
+        view(dataset=Spectra(data=train_data, device=device, columns=columns)),
         batch_size=batch_size, 
         shuffle=shuffle)
-
     valid_loader = DataLoader(
-        ClassificationDataset(
-            dataset=Spectra(data=valid_data, device=device, columns=columns), 
-            input_columns=input_columns,
-            target_column=target_column),
+        view(dataset=Spectra(data=valid_data, device=device, columns=columns)),
         batch_size=batch_size, 
         shuffle=shuffle)
-
     test_loader = DataLoader(
-        ClassificationDataset(
-            dataset=Spectra(data=test_data, device=device, columns=columns), 
-            input_columns=input_columns,
-            target_column=target_column),
+        view(dataset=Spectra(data=test_data, device=device, columns=columns)),
         batch_size=batch_size, 
         shuffle=shuffle)
-    
     return train_loader, valid_loader, test_loader, metadata
 
 

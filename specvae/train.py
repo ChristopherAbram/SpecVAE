@@ -397,43 +397,54 @@ class ComposedTrainer(Trainer):
 
     def evaluate(self, X, metrics=[], metrics_sub=[]):
         metrics_value = super().evaluate(X, evaluation_metrics=metrics)
-        # Compile list of metric functions:
         metric_funcs = self.metric_funcs_sub
         if self.metric_names_sub != metrics_sub:
             metric_funcs = {}
             for m in metrics_sub:
                 metric_funcs[m] = getattr(mcs, m)
-        # Compute values:
-        metrics_acc = {}
-        for metric_name in metrics_sub:
-            metrics_acc[metric_name] = 0.
+        acc_values = MetricCounter({})
         for test_step, data_batch in enumerate(X):
             values = self.test_step_sub(-1, test_step, data_batch, metrics_sub, metric_funcs)
-            for metric_name, value in values.items():
-                metrics_acc[metric_name] += value
-        # Average:
-        for metric_name, metric_acc in metrics_acc.items():
-            metrics_value[metric_name] = metric_acc / (test_step + 1)
-        return metrics_value
+            acc_values = acc_values + values
+        avg_values = acc_values / (test_step + 1)
+        return {**metrics_value, **avg_values.value}
 
 
-class JointVAEandClassifierTrainer(ComposedTrainer):
+class VAEandClassifierTrainer(ComposedTrainer):
     def __init__(self, model, writer=None):
         super().__init__(model, writer=writer)
 
     def model_forward(self, data_batch):
-        x_batch, y_batch, ids_batch = data_batch
-        x_recon_batch, latent_sample, latent_dist, (y_logits_batch, y_pred_batch) = self.model.forward_(x_batch)
+        x_batch, feature_batch, y_batch, ids_batch = data_batch
+        x_recon_batch, latent_sample, latent_dist, (y_logits_batch, y_pred_batch) = self.model.forward_(x_batch, feature_batch)
         loss, recon, kldiv, clf_loss = self.model.loss.forward_(
-            x_batch, x_recon_batch, latent_dist, y_logits_batch, y_batch)
+            x_recon_batch, x_batch, latent_dist, y_logits_batch, y_batch)
         return loss, x_batch, x_recon_batch, {'kldiv': kldiv.item(), 'recon': recon.item(), 'clf_loss': clf_loss.item()}
 
     def test_step_sub(self, epoch, step, data_batch, metrics=[], metric_funcs={}):
         values = {}
-        x_batch, y_true, ids_batch = data_batch
-        x_recon_batch, latent_sample, latent_dist, y_pred = self.model.forward_(x_batch)
-        # y_true = y_batch.squeeze().data.cpu().numpy()
-        # y_pred = y_pred_batch.squeeze().data.cpu().numpy()
+        x_batch, feature_batch, y_true, ids_batch = data_batch
+        x_recon_batch, latent_sample, latent_dist, (y_logits, y_pred) = self.model.forward_(x_batch, feature_batch)
+        for metric_name in metrics:
+            values[metric_name] = metric_funcs[metric_name](y_true, y_pred)
+        return values
+
+
+class VAEandRegressorTrainer(ComposedTrainer):
+    def __init__(self, model, writer=None):
+        super().__init__(model, writer=writer)
+
+    def model_forward(self, data_batch):
+        x_batch, feature_batch, y_batch, ids_batch = data_batch
+        x_recon_batch, latent_sample, latent_dist, y_pred_batch = self.model.forward_(x_batch, feature_batch)
+        loss, recon, kldiv, reg_loss = self.model.loss.forward_(
+            x_recon_batch, x_batch, latent_dist, y_pred_batch, y_batch)
+        return loss, x_batch, x_recon_batch, {'kldiv': kldiv.item(), 'recon': recon.item(), 'reg_loss': reg_loss.item()}
+
+    def test_step_sub(self, epoch, step, data_batch, metrics=[], metric_funcs={}):
+        values = {}
+        x_batch, feature_batch, y_true, ids_batch = data_batch
+        x_recon_batch, latent_sample, latent_dist, y_pred = self.model.forward_(x_batch, feature_batch)
         for metric_name in metrics:
             values[metric_name] = metric_funcs[metric_name](y_true, y_pred)
         return values
@@ -567,6 +578,8 @@ def export_training_parameters(config, paths, session=None):
         rhparams['full_model_name'] = paths['full_model_name']
     if 'layer_config' in config:
         rhparams['layer_config'] = config['layer_config'].tolist()
+    if 'latent_spec' in config:
+        rhparams['latent_spec'] = config['latent_spec']
     if 'input_columns' in config:
         rhparams['input_columns'] = config['input_columns']
     if 'class_subset' in config:
@@ -598,7 +611,7 @@ def export_to_csv(hparams, rhparams, fmetric, paths, session=None, filepath=None
 
 def export_training_session(trainer, paths, 
     train_loader=None, valid_loader=None, test_loader=None, 
-        n_mol=100, metrics=[], evaluation_metrics=[], session=None):
+        n_mol=100, metrics=[], evaluation_metrics=[], session=None, evaluation_metrics_sub=[]):
     from . import visualize as vis
     import json
     model = trainer.model
@@ -629,7 +642,10 @@ def export_training_session(trainer, paths,
     metric, fmetric = {}, {}
     from .vae import BaseVAE
     if test_loader is not None:
-        train_e = trainer.evaluate(train_loader, metrics, evaluation_metrics)
+        if isinstance(trainer, ComposedTrainer):
+            train_e = trainer.evaluate(train_loader, evaluation_metrics, evaluation_metrics_sub)
+        else:
+            train_e = trainer.evaluate(train_loader, metrics, evaluation_metrics)
         for key, item in train_e.items():
             metric['model/train/' + key] = extract(item)
             fmetric['train_' + key] = extract(item)
@@ -639,7 +655,10 @@ def export_training_session(trainer, paths,
                 for key, item in train_avg.items():
                     fmetric['train_avg_' + key] = extract(item)
     if valid_loader is not None:
-        valid_e = trainer.evaluate(valid_loader, metrics, evaluation_metrics)
+        if isinstance(trainer, ComposedTrainer):
+            valid_e = trainer.evaluate(valid_loader, evaluation_metrics, evaluation_metrics_sub)
+        else:
+            valid_e = trainer.evaluate(valid_loader, metrics, evaluation_metrics)
         for key, item in valid_e.items():
             metric['model/valid/' + key] = extract(item)
             fmetric['valid_' + key] = extract(item)
@@ -649,7 +668,10 @@ def export_training_session(trainer, paths,
                 for key, item in valid_avg.items():
                     fmetric['valid_avg_' + key] = extract(item)
     if test_loader is not None:
-        test_e = trainer.evaluate(test_loader, metrics, evaluation_metrics)
+        if isinstance(trainer, ComposedTrainer):
+            test_e = trainer.evaluate(test_loader, evaluation_metrics, evaluation_metrics_sub)
+        else:
+            test_e = trainer.evaluate(test_loader, metrics, evaluation_metrics)
         for key, item in test_e.items():
             metric['model/test/' + key] = extract(item)
             fmetric['test_' + key] = extract(item)
@@ -701,9 +723,9 @@ def export_training_session(trainer, paths,
     # Save CSV file:
     if export_to_csv(hparams, rhparams, fmetric, paths, session):
         print("Successfully exported training session to csv file.")
-    if trainer.writer is not None:
-        trainer.writer.add_hparams(hparams, metric)
-        trainer.writer.close()
+    # if trainer.writer is not None:
+    #     trainer.writer.add_hparams(hparams, metric)
+    #     trainer.writer.close()
 
 
 # Method for printing a pretty pregressbar when training the network

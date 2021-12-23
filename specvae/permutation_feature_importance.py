@@ -12,16 +12,18 @@ from specvae.metrics import PFI
 def main(argc, argv):
     # Set and parse arguments:
     parser = argparse.ArgumentParser(description='Compute permutation feature importance for models located in model_base_path directory, listed in CSV file.')
+    parser.add_argument('--session', type=str, help='Session number, used to identify model database with the process', default='01')
     parser.add_argument('--model-base-path', type=str, help='Full name of model', 
-        default='/home/krzyja/Workspace/SpecVAE/.model/HMDB/reg')
+        default='/home/krzyja/Workspace/SpecVAE/.model/HMDB/betavae_reg')
     parser.add_argument('--csv-filepath', type=str, help='Path to csv file with models', 
-        default='/home/krzyja/Workspace/SpecVAE/.model/HMDB/reg/experiment01.csv')
+        default='/home/krzyja/Workspace/SpecVAE/.model/HMDB/betavae_reg/experiment01.csv')
     parser.add_argument('--n-repeats', type=int, help='Number of times to permute a feature', default=10)
     parser.add_argument('--n-samples', type=int, help='Number of samples used for PFI computation', default=3000)
     parser.add_argument('--n-proc', type=int, help='Number of processes to compute PFI score on', default=6)
     args = parser.parse_args()
 
     # Parameters:
+    session             = args.session
     model_base_path     = args.model_base_path
     filepath            = args.csv_filepath
     n_repeats           = args.n_repeats
