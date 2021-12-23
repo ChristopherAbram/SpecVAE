@@ -31,46 +31,16 @@
     },
     "sessions": [
         {
-            "--session": "01",
+            "--session": "08",
             "--use-cuda": true,
             "--gpu-device": 0,
-            "--beta": [0.01]
+            "--beta": [10.0]
         },
         {
-            "--session": "02",
-            "--use-cuda": true,
-            "--gpu-device": 0,
-            "--beta": [0.1]
-        },
-        {
-            "--session": "03",
+            "--session": "09",
             "--use-cuda": true,
             "--gpu-device": 1,
-            "--beta": [0.2]
-        },
-        {
-            "--session": "04",
-            "--use-cuda": true,
-            "--gpu-device": 1,
-            "--beta": [0.5]
-        },
-        {
-            "--session": "05",
-            "--use-cuda": true,
-            "--gpu-device": 2,
-            "--beta": [1.0]
-        },
-        {
-            "--session": "06",
-            "--use-cuda": true,
-            "--gpu-device": 2,
-            "--beta": [2.0]
-        },
-        {
-            "--session": "07",
-            "--use-cuda": true,
-            "--gpu-device": 3,
-            "--beta": [5.0]
+            "--beta": [100.0]
         }
     ]
 }

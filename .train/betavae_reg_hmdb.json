@@ -1,0 +1,35 @@
+{
+    "name": "betavae_reg_hmdb",
+    "environment": "specvae",
+    "script": "specvae/train_vae_reg_single.py",
+    "parameters": {
+        "--model-name": "betavae_reg",
+        "--dataset": "HMDB",
+        "--n-samples": -1,
+        "--max-mz": 2500.0,
+        "--n-peaks": [50],
+        "--min-intensity": [0.001],
+        "--rescale-intensity": [false],
+        "--normalize-intensity": true,
+        "--normalize-mass": true,
+        "--n-epochs": 30,
+        "--batch-size": 128,
+        "--learning-rate": 0.001,
+        "--layer-config": [
+            "[[$indim, 15, 3], [3, 15, $indim]]",
+            "[[$indim, 15, 4], [4, 15, $indim]]",
+            "[[$indim, 15, 5], [5, 15, $indim]]",
+            "[[$indim, 15, 10], [10, 15, $indim]]"
+        ],
+        "--beta": [0.01, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 100.0],
+        "--input-columns": "['spectrum', 'collision_energy', 'ionization_mode_id', 'kingdom_id', 'superclass_id', 'class_id']"
+    },
+    "sessions": [
+        {
+            "--session": "01",
+            "--use-cuda": true,
+            "--gpu-device": 3,
+            "--target-column": "collision_energy"
+        }
+    ]
+}

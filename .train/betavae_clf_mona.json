@@ -1,0 +1,68 @@
+{
+    "name": "betavae_clf_mona",
+    "environment": "specvae",
+    "script": "specvae/train_vae_clf_single.py",
+    "parameters": {
+        "--model-name": "betavae_clf",
+        "--dataset": "MoNA",
+        "--n-samples": -1,
+        "--max-mz": 2500.0,
+        "--n-peaks": [50],
+        "--min-intensity": [0.001],
+        "--rescale-intensity": [false],
+        "--normalize-intensity": true,
+        "--normalize-mass": true,
+        "--n-epochs": 30,
+        "--batch-size": 128,
+        "--learning-rate": 0.001,
+        "--layer-config": [
+            "[[$indim, 15, 3], [3, 15, $indim]]",
+            "[[$indim, 15, 4], [4, 15, $indim]]",
+            "[[$indim, 15, 5], [5, 15, $indim]]",
+            "[[$indim, 15, 10], [10, 15, $indim]]"
+        ],
+        "--beta": [0.01, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 100.0],
+        "--input-columns": "['spectrum', 'collision_energy', 'total_exact_mass', 'precursor_mz', 'ionization_mode_id', 'instrument_id', 'instrument_type_id', 'precursor_type_id', 'kingdom_id', 'superclass_id', 'class_id']"
+    },
+    "sessions": [
+        {
+            "--session": "01",
+            "--use-cuda": true,
+            "--gpu-device": 0,
+            "--target-column": {
+                "--target-column":          "--class-subset",
+                "ionization_mode_id":       [],
+                "instrument_id":            [0, 129, 130, 155, 161, 133, 122, 157, 136, 116, 115, 135]
+            }
+        },
+        {
+            "--session": "02",
+            "--use-cuda": true,
+            "--gpu-device": 1,
+            "--target-column": {
+                "--target-column":          "--class-subset",
+                "instrument_type_id":       [1, 0, 7, 2, 10, 17, 12],
+                "precursor_type_id":        [2, 3, 4, 1, 0, 28]
+            }
+        },
+        {
+            "--session": "03",
+            "--use-cuda": true,
+            "--gpu-device": 2,
+            "--target-column": {
+                "--target-column":          "--class-subset",
+                "kingdom_id":               [],
+                "superclass_id":            [6, 18, 14, 1, 10, 12, 0, 7, 5]
+            }
+        },
+        {
+            "--session": "04",
+            "--use-cuda": true,
+            "--gpu-device": 3,
+            "--target-column": {
+                "--target-column":          "--class-subset",
+                "class_id":                 [198, 96, 32, 173, 61, 238, 94, 70, 106, 131, 65, 124, 43, 172, 190]
+            }
+        }
+    ]
+}
