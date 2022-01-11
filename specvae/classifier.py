@@ -56,7 +56,7 @@ class BaseClassifier(BaseModel):
         in_dim, out_dim = self.layer_config[layers_num - 1], self.n_classes if self.n_classes > 2 else 1
         layers.append(('lin_%d' % layers_num, nn.Linear(in_dim, out_dim)))
         # layers.append(('lin_batchnorm_%d' % layers_num, nn.BatchNorm1d(out_dim)))
-
+        self.input_size = self.layer_config[0]
         self.layers = nn.Sequential(OrderedDict(layers))
         self.loss = BaseClassifierCriterium(n_classes=self.n_classes)
         self.out = self.loss.out

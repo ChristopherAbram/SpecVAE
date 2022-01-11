@@ -86,7 +86,7 @@ class VAELossGaussian(nn.Module):
 
 class BaseVAE(BaseModel):
     def __init__(self, config, device=None):
-        super(BaseVAE, self).__init__(config, device)
+        super().__init__(config, device)
         self.name = self.get_attribute('name', required=False, default='vae')
 
     def build_layers(self):
@@ -185,6 +185,7 @@ class SpecVEA(BaseVAE):
         self.decoder = nn.Sequential(OrderedDict(decoder_layers))
 
         # Loss:
+        self.input_size = self.encoder_layer_config[0]
         self.loss = VAELoss(self.beta)
 
     def encode(self, x):
@@ -369,6 +370,99 @@ class JointSpecGaussianVAEandClassifier(BaseVAE):
         x = self.decode(z)
         return x, z, latent_dist, (logits, labels)
 
+class VAEandClassifierCriterium(nn.Module):
+    def __init__(self, n_classes=2, beta=1.0):
+        super().__init__()
+        self.n_classes = n_classes
+        self.beta = beta
+        self.vae_loss = VAELoss(beta=beta)
+        self.clf_loss = BaseClassifierCriterium(n_classes=self.n_classes)
+
+    def forward(self, input, target, latent_dist):
+        loss, _, __ = self.forward_(input, target, latent_dist)
+        return loss
+
+    def forward_(self, input, target, latent_dist, y_logits_pred, y_true):
+        vae_loss, recon, kld = self.vae_loss.forward_(input, target, latent_dist)
+        clf_loss = self.clf_loss(y_logits_pred, y_true)
+        loss = vae_loss + clf_loss
+        return loss, recon, kld, clf_loss
+
+
+class VAEandClassifier(SpecVEA):
+    def __init__(self, config, device=None):
+        super().__init__(config, device)
+
+    def build_layers(self):
+        self.clf_config = self.get_attribute('clf_config')
+        self.name = self.get_attribute('name', required=False, default='vae_clf')
+        super().build_layers()
+        # Classification model:
+        from .dataset import Identity
+        self.clf_model = BaseClassifier(config={
+            'name':                 get_attribute(self.clf_config, 'name', required=False, default='inner_clf'),
+            'n_classes':            get_attribute(self.clf_config, 'n_classes'),
+            'layer_config':         get_attribute(self.clf_config, 'layer_config'),
+            'transform':            get_attribute(self.clf_config, 'transform', 
+                                        required=False, default=tv.transforms.Compose([Identity()])),
+            'target_column':        get_attribute(self.clf_config, 'target_column'),
+            'target_column_id':     get_attribute(self.clf_config, 'target_column'),
+            'input_columns':        get_attribute(self.clf_config, 'input_columns'),
+            'input_sizes':          get_attribute(self.clf_config, 'input_sizes'),
+            'types':                get_attribute(self.clf_config, 'types'),
+            'class_subset':         get_attribute(self.clf_config, 'class_subset', required=False, default=[]),
+            'class_weights':        get_attribute(self.clf_config, 'class_weights', required=False, default=[]),
+            'dataset':              self.get_attribute('dataset', required=False)
+        })
+        # Loss:
+        self.loss = VAEandClassifierCriterium(n_classes=self.clf_model.config['n_classes'], beta=self.beta)
+
+    def forward(self, x, feature=torch.tensor([])):
+        x, _1, _2, _3 = self.forward_(x, feature)
+        return x
+
+    def forward_(self, x, feature):
+        latent_dist = self.encode(x)
+        z = self.reparameterize(latent_dist)
+        if torch.numel(feature) == 0 and self.clf_model.input_size > self.latent_dim:
+            size = self.clf_model.input_size - self.latent_dim
+            feature = torch.zeros((x.shape[0], size), dtype=x.dtype).to(x.device)
+            logits, labels = self.clf_model.forward_(torch.cat([z, feature], dim=1))
+        elif torch.numel(feature) == 0 and self.clf_model.input_size == self.latent_dim:
+            logits, labels = self.clf_model.forward_(z)
+        else:
+            logits, labels = self.clf_model.forward_(torch.cat([z, feature], dim=1))
+        x = self.decode(z)
+        return x, z, latent_dist, (logits, labels)
+
+    def latent_with_features_(self, x):
+        v_size = self.encoder_layer_config[0]
+        x = torch.from_numpy(x) if not torch.is_tensor(x) else x
+        latent_dist = self.encode(x[:,:v_size])
+        z = self.reparameterize(latent_dist)
+        if self.clf_model.input_size > self.latent_dim:
+            z = torch.cat([z, x[:,v_size:]], dim=1)
+        return z
+
+    def predict(self, x):
+        z = self.latent_with_features_(x)
+        return self.clf_model.predict(z)
+
+    def predict_log_proba(self, x):
+        z = self.latent_with_features_(x)
+        return self.clf_model.predict_log_proba(z)
+
+    def predict_proba(self, x):
+        z = self.latent_with_features_(x)
+        return self.clf_model.predict_proba(z)
+
+    def fit(self, X, y):
+        # mock for sklearn...
+        ...
+
+    def score(self, X, y, sample_weight=None):
+        Z = self.latent_with_features_(X)
+        return self.clf_model.score(Z, y, sample_weight)
 
 
 from .regressor import BaseRegressor, BaseRegressorCriterium
@@ -477,3 +571,85 @@ class JointSpecGaussianVAEandRegressor(BaseVAE):
         x = self.decode(z)
         return x, z, latent_dist, y_pred
 
+
+class VAEandRegressorCriterium(nn.Module):
+    def __init__(self, beta=1.0):
+        super().__init__()
+        self.beta = beta
+        self.vae_loss = VAELoss(beta=beta)
+        self.reg_loss = BaseRegressorCriterium()
+
+    def forward(self, input, target, latent_dist):
+        loss, _1, _2, _3 = self.forward_(input, target, latent_dist)
+        return loss
+
+    def forward_(self, input, target, latent_dist, y_pred, y_true):
+        vae_loss, recon, kld = self.vae_loss.forward_(input, target, latent_dist)
+        reg_loss = self.reg_loss(y_pred, y_true)
+        loss = vae_loss + reg_loss
+        return loss, recon, kld, reg_loss
+        
+
+class VAEandRegressor(SpecVEA):
+    def __init__(self, config, device=None):
+        super().__init__(config, device)
+
+    def build_layers(self):
+        # Build model layers
+        self.regressor_config = self.get_attribute('regressor_config')
+        self.name = self.get_attribute('name', required=False, default='vae_reg')
+        super().build_layers()
+        # Classification model:
+        from .dataset import Identity
+        self.regressor_model = BaseRegressor(config={
+            'name':                 get_attribute(self.regressor_config, 'name', required=False, default='inner_reg'),
+            'layer_config':         get_attribute(self.regressor_config, 'layer_config'),
+            'transform':            get_attribute(self.regressor_config, 'transform', 
+                                        required=False, default=tv.transforms.Compose([Identity()])),
+            'target_column':        get_attribute(self.regressor_config, 'target_column'),
+            'input_columns':        get_attribute(self.regressor_config, 'input_columns'),
+            'input_sizes':          get_attribute(self.regressor_config, 'input_sizes'),
+            'types':                get_attribute(self.regressor_config, 'types'),
+            'dataset':              self.get_attribute('dataset', required=False)
+        })
+        # Loss:
+        self.loss = VAEandRegressorCriterium(beta=self.beta)
+
+    def forward(self, x, feature=torch.tensor([])):
+        x, _1, _2, _3 = self.forward_(x, feature)
+        return x
+
+    def forward_(self, x, feature):
+        latent_dist = self.encode(x)
+        z = self.reparameterize(latent_dist)
+        if torch.numel(feature) == 0 and self.regressor_model.input_size > self.latent_dim:
+            size = self.regressor_model.input_size - self.latent_dim
+            feature = torch.zeros((x.shape[0], size), dtype=x.dtype).to(x.device)
+            pred = self.regressor_model.forward(torch.cat([z, feature], dim=1))
+        elif torch.numel(feature) == 0 and self.regressor_model.input_size == self.latent_dim:
+            pred = self.regressor_model.forward(z)
+        else:
+            pred = self.regressor_model.forward(torch.cat([z, feature], dim=1))
+        x = self.decode(z)
+        return x, z, latent_dist, pred
+
+    def latent_with_features_(self, x):
+        v_size = self.encoder_layer_config[0]
+        x = torch.from_numpy(x) if not torch.is_tensor(x) else x
+        latent_dist = self.encode(x[:,:v_size])
+        z = self.reparameterize(latent_dist)
+        if self.regressor_model.input_size > self.latent_dim:
+            z = torch.cat([z, x[:,v_size:]], dim=1)
+        return z
+
+    def fit(self, X, y):
+        # mock for sklearn...
+        ...
+
+    def predict(self, x):
+        z = self.latent_with_features_(x)
+        return self.regressor_model.predict(z)
+
+    def score(self, X, y, sample_weight=None):
+        Z = self.latent_with_features_(X)
+        return self.regressor_model.score(Z, y, sample_weight)

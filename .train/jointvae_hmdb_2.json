@@ -1,0 +1,81 @@
+{
+    "name": "jointvae_hmdb_2",
+    "environment": "specvae",
+    "script": "specvae/train_jointvae_single.py",
+    "parameters": {
+        "--model-name": "jointvae_2",
+        "--dataset": "HMDB",
+        "--n-samples": -1,
+        "--max-mz": 2500.0,
+        "--n-peaks": [50],
+        "--min-intensity": [0.001],
+        "--rescale-intensity": [false],
+        "--normalize-intensity": true,
+        "--normalize-mass": true,
+        "--n-epochs": 20,
+        "--batch-size": 128,
+        "--learning-rate": 0.001,
+        "--layer-config": "[[$indim, 50, 2], [2, 50, $indim]]",
+        "--latent-spec": [
+            "{'cont': 1, 'disc': [2]}"
+        ],
+        "--cont-min-capacity": [0.0],
+        "--cont-max-capacity": [3.0, 5.0, 10.0, 20.0, 30.0, 50.0, 70.0],
+        "--cont-n-iter": [10000],
+        "--disc-min-capacity": [0.0],
+        "--disc-max-capacity": [3.0, 5.0, 10.0, 20.0, 30.0, 50.0, 70.0],
+        "--disc-n-iter": [10000],
+        "--disc-gamma": [5.0, 10.0, 20.0, 30.0, 50.0, 70.0, 90.0, 120.0],  
+        "--temperature": [0.67]
+    },
+    "sessions": [
+        {
+            "--session": "01",
+            "--use-cuda": true,
+            "--gpu-device": 0,
+            "--cont-gamma": 5.0
+        },
+        {
+            "--session": "02",
+            "--use-cuda": true,
+            "--gpu-device": 0,
+            "--cont-gamma": 10.0
+        },
+        {
+            "--session": "03",
+            "--use-cuda": true,
+            "--gpu-device": 1,
+            "--cont-gamma": 20.0
+        },
+        {
+            "--session": "04",
+            "--use-cuda": true,
+            "--gpu-device": 1,
+            "--cont-gamma": 30.0
+        },
+        {
+            "--session": "05",
+            "--use-cuda": true,
+            "--gpu-device": 2,
+            "--cont-gamma": 50.0
+        },
+        {
+            "--session": "06",
+            "--use-cuda": true,
+            "--gpu-device": 2,
+            "--cont-gamma": 70.0
+        },
+        {
+            "--session": "07",
+            "--use-cuda": true,
+            "--gpu-device": 3,
+            "--cont-gamma": 90.0
+        },
+        {
+            "--session": "08",
+            "--use-cuda": true,
+            "--gpu-device": 3,
+            "--cont-gamma": 120.0
+        }
+    ]
+}

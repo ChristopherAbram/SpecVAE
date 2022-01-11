@@ -1,0 +1,23 @@
+{
+    "name": "betavae_dms",
+    "environment": "specvae",
+    "script": "train/disentanglement_metrics.py",
+    "parameters": {
+        "--csv-filepath": {
+            "--csv-filepath":                                                           "--model-base-path",
+            "/home/krzyja/Workspace/SpecVAE/.model/MoNA/beta_vae/experiment_3dims.csv": "/home/krzyja/Workspace/SpecVAE/.model/MoNA/beta_vae"
+        },
+        "--batch-size": 128,
+        "--n-samples": 15000,
+        "--n-train-samples": 10000,
+        "--n-eval-samples": 5000,
+        "--n-variance-estimate-samples": 5000,
+        "--n-proc": 4,
+        "--n-chunks": 40
+    },
+    "sessions": [
+        {
+            "--session": "01"
+        }
+    ]
+}

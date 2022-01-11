@@ -152,34 +152,57 @@ class PFI:
     def load_data(model, n_samples=3000):
         from .classifier import BaseClassifier
         from .regressor import BaseRegressor
+        from .vae import VAEandClassifier, VAEandRegressor
         from . import dataset as dt
         from . import utils
-        input_columns = model.config['input_columns']
-        target_column_id = model.config['target_column_id']
-        target_column = model.config['target_column']
-        class_subset = model.config['class_subset'] if 'class_subset' in model.config else []
+
         dataset = model.config['dataset']
-        types = model.config['types']
+        if isinstance(model, VAEandClassifier):
+            config = model.clf_model.config
+            target_column_id = model.config['clf_target_column_id']
+        elif isinstance(model, VAEandRegressor):
+            config = model.regressor_model.config
+            target_column_id = model.config['reg_target_column']
+        else:
+            config = model.config
+            target_column_id = config['target_column_id']
+        
+        input_columns = config['input_columns']
+        target_column = config['target_column']
+        class_subset = config['class_subset'] if 'class_subset' in config else []
+        types = config['types']
         columns = input_columns + [target_column_id]
+
         base_path = utils.get_project_path() / '.data' / dataset
         metadata_path = base_path / ('%s_meta.npy' % dataset)
         metadata = None
         if os.path.exists(metadata_path):
             metadata = np.load(metadata_path, allow_pickle=True).item()
+        
         device = torch.device('cpu')
-        if isinstance(model, BaseClassifier):
+        if isinstance(model, (BaseClassifier, VAEandClassifier)):
             train_data, valid_data, test_data, metadata, cw = dt.load_data_classification(
-                dataset, model.transform, n_samples, int(1e7), False, device, input_columns, types, target_column_id, True, class_subset)
-        elif isinstance(model, BaseRegressor):
+                dataset, model.transform, n_samples, int(1e7), False, device, 
+                input_columns, types, target_column_id, True, class_subset)
+        elif isinstance(model, (BaseRegressor, VAEandRegressor)):
             train_data, valid_data, test_data, metadata = dt.load_data_regression(
-                dataset, model.transform, n_samples, int(1e7), False, device, input_columns, types, target_column, True)
+                dataset, model.transform, n_samples, int(1e7), False, device, 
+                input_columns, types, target_column, True)
         X, y, ids = next(iter(test_data))
         return X, y, ids
 
     @staticmethod
     def pfi(model, X, y, n_repeats=10):
-        input_columns = model.config['input_columns']
-        input_sizes = model.config['input_sizes']
+        from .vae import VAEandClassifier, VAEandRegressor
+        if isinstance(model, VAEandClassifier):
+            config = model.clf_model.config
+        elif isinstance(model, VAEandRegressor):
+            config = model.regressor_model.config
+        else:
+            config = model.config
+        input_columns = config['input_columns']
+        input_sizes = config['input_sizes']
+
         pi = permutation_importance(model, X, y, n_repeats=10, random_state=0)
         u = np.array([0] + input_sizes)
         s = {input_columns[i-1]: pi.importances_mean[u[:i].sum():u[:i+1].sum()].sum() for i in range(1, len(u))}
