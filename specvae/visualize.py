@@ -6,9 +6,11 @@ import matplotlib
     # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+import specvae
 
-def plot_spectra_grid(model, data_batch, dirpath='.', epoch=0, device=None, transform=None):
-    name = "%s_spec_%s" % (model.get_name(), epoch)
+
+def plot_spectra_grid(model, data_batch, dirpath='.', epoch=0, device=None, transform=None, dpi=100, name=None, grid=(3, 3), figsize=(20, 20)):
+    name = "%s_spec_%s" % (model.get_name(), epoch) if name is None else name
     x_batch = data_batch[0]
     data_batch2 = model(x_batch)
     resolution, max_mz = 0.05, 2500.
@@ -26,20 +28,33 @@ def plot_spectra_grid(model, data_batch, dirpath='.', epoch=0, device=None, tran
     if hasattr(model, 'lattice') and epoch % 5 == 0:
         plot_spectra_(model.lattice(grid=(17, 17), zrange=(-75, 75), device=device), grid=(17, 17), figsize=(34, 18),
             filepath=os.path.join(dirpath, 'lattice_%s.png' % epoch), 
-            resolution=resolution, max_mz=max_mz)
+            resolution=resolution, max_mz=max_mz, dpi=dpi)
 
-    plot_spectra_compare(data_batch, data_batch2, grid=(3, 3), figsize=(20, 20), 
+    return plot_spectra_compare(data_batch, data_batch2, grid=grid, figsize=figsize, 
         filepath=os.path.join(dirpath, name), resolution=resolution, max_mz=max_mz)
 
 
-def plot_spectra_(spectra, grid=(4, 3), figsize=(17, 9), filepath=None, resolution=0.05, max_mz=2500):
-    fig, axs = plt.subplots(grid[0], grid[1], figsize=figsize)
+def plot_spectra_(spectra, grid=(4, 3), figsize=(17, 9), filepath=None, 
+    resolution=0.05, max_mz=2500, transform=None, color='blue', linewidth=0.5, dpi=100):
+    fig, axs = plt.subplots(grid[0], grid[1], figsize=figsize, dpi=dpi)
     for i, ax in enumerate(axs.flat):
         if i >= spectra.shape[0]:
             break
+        if transform:
+            import torch
+            # db = []
+            # for i, x in enumerate(spectra):
+                # db.append(transform(spectra[i].data.cpu().numpy()))
+            # data_batch = np.vstack(db)
+            if torch.is_tensor(spectra):
+                spectrum = transform(spectra[i].data.cpu().numpy())
+            else:
+                spectrum = transform(spectra[i])
+        else:
+            spectrum = spectra[i]
 
         mz = np.arange(0, max_mz, step=resolution)
-        ax.plot(mz, spectra[i].tolist(), color='blue')
+        ax.plot(mz, spectrum.tolist(), color=color, linewidth=linewidth)
         ax.set_ylim([0, 100])
         if i % grid[1] == 0:
             ax.set_ylabel('Intensity [%]')
@@ -55,18 +70,19 @@ def plot_spectra_(spectra, grid=(4, 3), figsize=(17, 9), filepath=None, resoluti
         plt.savefig(filepath)
     else:
         plt.show()
-    plt.close(fig)
+    # plt.close(fig)
+    return fig, axs
 
 
-def plot_spectra_compare(spectra1, spectra2, grid=(4, 3), figsize=(17, 9), filepath=None, resolution=0.05, max_mz=2500):
-    fig, axs = plt.subplots(grid[0], grid[1], figsize=figsize)
+def plot_spectra_compare(spectra1, spectra2, grid=(4, 3), figsize=(17, 9), 
+    filepath=None, resolution=0.05, max_mz=2500, dpi=100):
+    fig, axs = plt.subplots(grid[0], grid[1], figsize=figsize, dpi=dpi)
     for i, ax in enumerate(axs.flat):
         if i >= spectra1.shape[0] or i >= spectra2.shape[0]:
             break
-
         mz = np.arange(0, max_mz, step=resolution)
-        ax.plot(mz, (-spectra2[i]).tolist(), color='red')
-        ax.plot(mz, spectra1[i].tolist(), color='blue')
+        ax.plot(mz, (-spectra2[i]).tolist(), color='blue')
+        ax.plot(mz, spectra1[i].tolist(), color='red')
         # ax.set_title(spectra1['id'][i])
         ax.set_ylim([-100, 100])
         if i % grid[1] == 0:
@@ -78,34 +94,52 @@ def plot_spectra_compare(spectra1, spectra2, grid=(4, 3), figsize=(17, 9), filep
             ax.set_yticks([])
         if grid[1] * (grid[0] - 1) > i:
             ax.set_xticks([])
-    
     if filepath is not None:
         plt.savefig(filepath)
     else:
         plt.show()
-    plt.close(fig)
+    # plt.close(fig)
+    return fig, axs
 
 
-def plot_spectrum(spectrum, name='', filepath=None, resolution=0.05, max_mz=2500, structure=False, meta=None, ax=None, figsize=(5, 5)):
-    if isinstance(spectrum, str):
-        from .dataset import ToDenseSpectrum, SplitSpectrum
-        spectrum = ToDenseSpectrum(resolution, max_mz)(SplitSpectrum()(spectrum))
-    mz = np.arange(0, max_mz, step=resolution)
+def plot_spectrum(spectrum, name='', filepath=None, resolution=0.05, max_mz=2500, meta=None, 
+    ax=None, figsize=(5, 5), config=None, color='blue', transformed=False, linewidth=0.5):
+    from . import dataset as dt
+    import torchvision as tv
+    if 'transform' in config:
+        trans = config['transform']
+        revtrans = tv.transforms.Compose([
+            dt.ToMZIntDeConcatAlt(max_num_peaks=config['max_num_peaks']),
+            dt.Denormalize(intensity=config['normalize_intensity'], mass=config['normalize_mass'], max_mz=config['max_mz']),
+            dt.ToDenseSpectrum(resolution=resolution, max_mz=config['max_mz'])
+        ])
+        if not transformed:
+            spectrum = trans(spectrum)
+        spectrum = revtrans(spectrum)
+    elif isinstance(spectrum, str):
+        spectrum = dt.ToDenseSpectrum(resolution, max_mz)(dt.SplitSpectrum()(spectrum))
+    return plot_spectrum_(spectrum, name, resolution, max_mz, meta, ax, figsize, color, linewidth)
+
+def plot_spectrum_(spectrum, name='', resolution=0.05, max_mz=2500, meta=None, ax=None, figsize=(5, 5), color='blue', linewidth=0.5):
+    fig = None
+    title = name
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
-    title = name
     if meta:
+        if 'idvis' in meta:
+            ax.text(max_mz - 200., 85., meta['idvis'], fontsize=30)
+            # title = ', '.join([title, str(meta['idvis'])])
         if 'collision energy' in meta:
-            title += ', E=' + str(meta['collision energy'])
+            title = ', '.join([title, 'E=%s' % str(meta['collision energy'])])
         if 'ionization mode' in meta:
-            title += ' (%s)' % ('+' if (meta['ionization mode'] == 'positive' or meta['ionization mode'] == 1) else '-')
+            title = ', '.join([title, '(%s)' % ('+' if (meta['ionization mode'] == 'positive' or meta['ionization mode'] == 1) else '-')])
+    mz = np.arange(0, max_mz, step=resolution)
     ax.set_title(title)
-
-    ax.plot(mz, spectrum.tolist())
+    ax.plot(mz, spectrum.tolist(), color=color, linewidth=linewidth)
     ax.set_ylim([0, 100])
     ax.set_xlabel('m/z')
     ax.set_ylabel('Intensity [%]')
-
+    return fig, ax
 
 def plot_history(history, metric_name, filepath=None):
     values = np.array(history[metric_name])
@@ -240,3 +274,113 @@ def plot_distribution(data, subject, xlabel, ylabel, plot_density=False, bins=10
     # plt.ylabel("fraction of scores [%]")
     plt.show(fig)
     return cc
+
+
+import pandas as pd
+import numpy as np
+import io
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import matplotlib.patches as pch
+from matplotlib.colors import ListedColormap
+from matplotlib.cm import ScalarMappable
+from matplotlib.lines import Line2D
+from itertools import cycle
+
+def multi_index_heatmap(df, feature_column_name, row_index_columns, sample_columns, 
+    feature_names_width=1.2, scale=1.0, unit=1., space=0.02, legend_offset=0.5, 
+    heatmap_cell_width=1.5, heatmap_padding=0.1, colorbar_width=0.5, colorbar_padding=0.):
+    # Extract labels:
+    row_labels = {index_name: np.sort(df[index_name].unique()) for index_name in row_index_columns}
+    # column_labels = {index_name: np.sort(df[index_name].unique()) for index_name in column_index_columns}
+    # Specify GridSpec:
+    widths = np.array(
+        [unit*feature_names_width] + [unit] * len(row_labels) + 
+        [unit*heatmap_padding] + 
+        [unit*heatmap_cell_width] * len(sample_columns) + 
+        [unit*colorbar_width])
+    heights = np.array([unit] * (len(df) + 1) + [legend_offset*unit])
+    gs_kw = dict(width_ratios=widths, height_ratios=heights)
+    fig, axs = plt.subplots(
+        ncols=len(widths), nrows=len(heights), subplot_kw=dict(frameon=False),
+        constrained_layout=False, gridspec_kw=gs_kw, 
+        figsize=(scale * widths.sum(), scale * heights.sum()))
+    # Create a column for colorbar:
+    gs = axs[1, -1].get_gridspec()
+    for ax in axs[1:-1, -1]:
+        ax.remove()
+    axbig = fig.add_subplot(gs[1:-1, -1])
+    # Find maximum value for samples
+    np_sample = df[sample_columns].to_numpy()
+    min_s, max_s = np_sample.min(), np_sample.max()
+    # Define color mappings:
+    ## Categorical:
+    from matplotlib.cm import get_cmap
+    cmaps = cycle(['Blues', 'Oranges', 'Greens', 'Reds', 'Purples', ])
+    def map_disc_(items, cmap_name):
+        cmap_ = get_cmap(cmap_name)
+        inter_ = 0.3
+        slope_ = (1. - inter_) / len(items)
+        return {value: cmap_(inter_ + items.tolist().index(value) * slope_) for value in items}
+    row_colors = {label: map_disc_(items, cmap_name) \
+        for (label, items), cmap_name in zip(row_labels.items(), cmaps)}
+    # column_colors = {label: map_disc_(items, cmap_name) \
+        # for (label, items), cmap_name in zip(column_labels.items(), cmaps)}
+    ## Continuous:
+    def lin_cmap_(inter, value, min_value, max_value):
+        return inter + (value - min_value) * ((1. - inter) / np.abs(max_value - min_value))
+    newgreys_ = lambda x: get_cmap('Greys')(lin_cmap_(0.2, x, min_s, max_s))
+    newgreys = ListedColormap(newgreys_(np.linspace(min_s, max_s, 256)))
+    # Apply settings for axes:
+    for r, row in enumerate(axs):
+        for c, ax in enumerate(row):
+            ax.set(xticks=[], yticks=[])
+            for _, spine in ax.spines.items():
+                spine.set_visible(False)
+            if r == len(axs) - 1:
+                ax.patch.set_alpha(0.)
+                continue
+            if r >= 1 and c == 0:
+                ax.text(0, 0.5, df[feature_column_name][r - 1], 
+                    verticalalignment='center')
+            if r == 0 and c > len(row_labels) + 1 and c < (len(row_labels) + 1 + len(sample_columns) + 1):
+                ax.text(0.5, 0.5, sample_columns[c - len(row_labels) - 2], 
+                    verticalalignment='center', horizontalalignment='center')
+            if r >= 1 and c >= 1 and c < len(row_labels) + 1:
+                var_name = list(row_labels.keys())[c - 1]
+                var_value = df[var_name][r - 1]
+                ax.add_patch(pch.Rectangle((0., 0.), 1., 1., 
+                    facecolor=row_colors[var_name][var_value], edgecolor='none', label=var_value))
+            elif r >= 1 and c >= 1 and c > len(row_labels) + 1 and c < (len(row_labels) + 1 + len(sample_columns) + 1):
+                cmap = get_cmap('Greys')
+                ax.patch.set_alpha(0.)
+                var_name = sample_columns[c - len(row_labels) - 2]
+                var_value = df[var_name][r - 1]
+                ax.add_patch(pch.Rectangle((0., 0.), 1., 1., 
+                    facecolor=newgreys_(var_value), edgecolor='none'))
+    # Build the legend:
+    sizes = [ll.shape[0] for ln, ll in row_labels.items()]
+    largest_label_inx = np.argmax(sizes)
+    ## Categorical variables:
+    hndl = []
+    for i, (lbl, colors_) in enumerate(row_colors.items()):
+        size, empty = len(colors_), []
+        if i >= 1:
+            m = sizes[largest_label_inx] - sizes[i - 1]
+            if m > 0:
+                empty = [Line2D([], [], label='', alpha=0.)] * m
+        hndl += empty + [Line2D([], [], label=lbl, alpha=0.)] + [
+            pch.Patch(facecolor=color, edgecolor="k", label=label, alpha=0.7) 
+            for label, color in colors_.items()
+        ]
+    hndl += [Line2D([], [], label='', alpha=0.)] * (sizes[largest_label_inx] - sizes[i])
+    ## Continuous variables:
+    fig.colorbar(ScalarMappable(
+        norm=mpl.colors.Normalize(vmin=min_s, vmax=max_s), 
+        cmap=newgreys), cax=axbig)
+    legend = fig.legend(handles=hndl, loc='lower center', 
+        handlelength=scale*1.4, handleheight=scale*1.6, 
+        ncol=len(row_index_columns), labelspacing=.0)
+    legend.get_frame().set_alpha(0.)
+    plt.subplots_adjust(hspace=space, wspace=space)
+    return fig
