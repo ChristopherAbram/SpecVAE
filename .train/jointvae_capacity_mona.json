@@ -1,9 +1,9 @@
 {
-    "name": "jointvae_capacity_mona",
+    "name": "jointvae_capacity",
     "environment": "specvae",
     "script": "specvae/train_jointvae_single.py",
     "parameters": {
-        "--model-name": "jointvae",
+        "--model-name": "jointvae_capacity",
         "--dataset": "MoNA",
         "--n-samples": -1,
         "--max-mz": 2500.0,
@@ -12,7 +12,7 @@
         "--rescale-intensity": [false],
         "--normalize-intensity": true,
         "--normalize-mass": true,
-        "--n-epochs": 20,
+        "--n-epochs": 30,
         "--batch-size": 128,
         "--learning-rate": 0.001,
         "--layer-config": [
@@ -20,16 +20,27 @@
             "[[$indim, 200, 3], [3, 200, $indim]]",
             "[[$indim, 400, 3], [3, 400, $indim]]",
             "[[$indim, 800, 3], [3, 800, $indim]]",
-            "[[$indim, 1600, 3], [3, 1600, $indim]]"
+            "[[$indim, 1600, 3], [3, 1600, $indim]]",
+
+            "[[$indim, 1600, 100, 3], [3, 100, 1600, $indim]]",
+            "[[$indim, 800, 100, 3], [3, 100, 800, $indim]]",
+            "[[$indim, 400, 100, 3], [3, 100, 400, $indim]]",
+            "[[$indim, 200, 100, 3], [3, 100, 200, $indim]]",
+            "[[$indim, 100, 90, 3], [3, 90, 100, $indim]]",
+            
+            "[[$indim, 1600, 200, 50, 3], [3, 50, 200, 1600, $indim]]",
+            "[[$indim, 800, 200, 50, 3], [3, 50, 200, 800, $indim]]",
+            "[[$indim, 400, 200, 50, 3], [3, 50, 200, 400, $indim]]",
+            "[[$indim, 200, 100, 50, 3], [3, 50, 100, 200, $indim]]",
+            "[[$indim, 100, 90, 50, 3], [3, 50, 90, 100, $indim]]"
         ],
         "--latent-spec": "{'cont': 1, 'disc': [2, 6]}",
         "--cont-min-capacity": [0.0],
-        "--cont-max-capacity": [3.0, 5.0, 10.0, 20.0, 30.0, 50.0, 70.0],
+        "--cont-max-capacity": [3.0, 5.0, 10.0],
         "--cont-n-iter": [10000],
         "--disc-min-capacity": [0.0],
-        "--disc-max-capacity": [3.0, 5.0, 10.0, 20.0, 30.0, 50.0, 70.0],
+        "--disc-max-capacity": [3.0, 5.0, 10.0],
         "--disc-n-iter": [10000],
-        "--disc-gamma": [5.0, 10.0, 20.0, 30.0, 50.0, 70.0, 90.0, 120.0],  
         "--temperature": [0.67]
     },
     "sessions": [
@@ -37,49 +48,64 @@
             "--session": "01",
             "--use-cuda": true,
             "--gpu-device": 0,
-            "--cont-gamma": 5.0
+            "--disc-gamma": [5.0],
+            "--cont-gamma": [5.0]
         },
         {
             "--session": "02",
             "--use-cuda": true,
             "--gpu-device": 0,
-            "--cont-gamma": 10.0
+            "--disc-gamma": [5.0],
+            "--cont-gamma": [10.0]
         },
         {
             "--session": "03",
             "--use-cuda": true,
             "--gpu-device": 1,
-            "--cont-gamma": 20.0
+            "--disc-gamma": [5.0],
+            "--cont-gamma": [20.0]
         },
         {
             "--session": "04",
             "--use-cuda": true,
             "--gpu-device": 1,
-            "--cont-gamma": 30.0
+            "--disc-gamma": [10.0],
+            "--cont-gamma": [5.0]
         },
         {
             "--session": "05",
             "--use-cuda": true,
             "--gpu-device": 2,
-            "--cont-gamma": 50.0
+            "--disc-gamma": [10.0],
+            "--cont-gamma": [10.0]
         },
         {
             "--session": "06",
             "--use-cuda": true,
             "--gpu-device": 2,
-            "--cont-gamma": 70.0
+            "--disc-gamma": [10.0],
+            "--cont-gamma": [20.0]
         },
         {
             "--session": "07",
             "--use-cuda": true,
             "--gpu-device": 3,
-            "--cont-gamma": 90.0
+            "--disc-gamma": [20.0],
+            "--cont-gamma": [5.0]
         },
         {
             "--session": "08",
             "--use-cuda": true,
             "--gpu-device": 3,
-            "--cont-gamma": 120.0
+            "--disc-gamma": [20.0],
+            "--cont-gamma": [10.0]
+        },
+        {
+            "--session": "09",
+            "--use-cuda": true,
+            "--gpu-device": 3,
+            "--disc-gamma": [20.0],
+            "--cont-gamma": [20.0]
         }
     ]
 }

@@ -8,8 +8,8 @@
         "--n-samples": -1,
         "--max-mz": 2500.0,
         "--n-peaks": [10, 15, 25, 50],
-        "--min-intensity": [0.001, 0.01, 0.1, 0.2, 0.5, 1.0],
-        "--rescale-intensity": [true, false],
+        "--min-intensity": [0.001],
+        "--rescale-intensity": [false],
         "--normalize-intensity": true,
         "--normalize-mass": true,
         "--n-epochs": 20,
@@ -73,12 +73,7 @@
             "--session": "08",
             "--use-cuda": true,
             "--gpu-device": 3,
-            "--beta": [10.0]
-        },
-        {
-            "--session": "09",
-            "--use-cuda": false,
-            "--beta": [100.0]
+            "--beta": [10.0, 100.0]
         }
     ]
 }

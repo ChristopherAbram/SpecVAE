@@ -1,0 +1,92 @@
+{
+    "name": "betavae_capacity",
+    "environment": "specvae",
+    "script": "specvae/train_vae_single.py",
+    "parameters": {
+        "--model-name": "betavae_capacity",
+        "--dataset": ["HMDB"],
+        "--n-samples": -1,
+        "--max-mz": 2500.0,
+        "--n-peaks": [10, 25, 50],
+        "--min-intensity": [0.001],
+        "--rescale-intensity": [false],
+        "--normalize-intensity": true,
+        "--normalize-mass": true,
+        "--n-epochs": 30,
+        "--batch-size": 128,
+        "--learning-rate": 0.001,
+        "--layer-config": [
+            "[[$indim, 1600, 3], [3, 1600, $indim]]",
+            "[[$indim, 800, 3], [3, 800, $indim]]",
+            "[[$indim, 400, 3], [3, 400, $indim]]",
+            "[[$indim, 200, 3], [3, 200, $indim]]",
+            "[[$indim, 100, 3], [3, 100, $indim]]",
+            "[[$indim, 50, 3], [3, 50, $indim]]",
+
+            "[[$indim, 1600, 100, 3], [3, 100, 1600, $indim]]",
+            "[[$indim, 800, 100, 3], [3, 100, 800, $indim]]",
+            "[[$indim, 400, 100, 3], [3, 100, 400, $indim]]",
+            "[[$indim, 200, 100, 3], [3, 100, 200, $indim]]",
+            "[[$indim, 100, 90, 3], [3, 90, 100, $indim]]",
+            
+            "[[$indim, 1600, 200, 50, 3], [3, 50, 200, 1600, $indim]]",
+            "[[$indim, 800, 200, 50, 3], [3, 50, 200, 800, $indim]]",
+            "[[$indim, 400, 200, 50, 3], [3, 50, 200, 400, $indim]]",
+            "[[$indim, 200, 100, 50, 3], [3, 50, 100, 200, $indim]]",
+            "[[$indim, 100, 90, 50, 3], [3, 50, 90, 100, $indim]]",
+            
+            "[[$indim, 1600, 3], [3, 100, 1600, $indim]]",
+            "[[$indim, 800, 3], [3, 100, 800, $indim]]",
+            "[[$indim, 400, 3], [3, 100, 400, $indim]]",
+            "[[$indim, 300, 3], [3, 100, 300, $indim]]",
+            "[[$indim, 200, 3], [3, 100, 200, $indim]]",
+            "[[$indim, 100, 3], [3, 90, 100, $indim]]",
+            "[[$indim, 50, 3], [3, 40, 50, $indim]]",
+
+            "[[$indim, 1600, 100, 3], [3, 1600, $indim]]",
+            "[[$indim, 800, 100, 3], [3, 800, $indim]]",
+            "[[$indim, 400, 100, 3], [3, 400, $indim]]",
+            "[[$indim, 200, 100, 3], [3, 200, $indim]]",
+            "[[$indim, 100, 90, 3], [3, 100, $indim]]",
+            "[[$indim, 50, 40, 3], [3, 50, $indim]]"
+        ]
+    },
+    "sessions": [
+        {
+            "--session": "01",
+            "--use-cuda": true,
+            "--gpu-device": 0,
+            "--beta": [0.01]
+        },
+        {
+            "--session": "02",
+            "--use-cuda": true,
+            "--gpu-device": 0,
+            "--beta": [0.1]
+        },
+        {
+            "--session": "03",
+            "--use-cuda": true,
+            "--gpu-device": 1,
+            "--beta": [0.2]
+        },
+        {
+            "--session": "04",
+            "--use-cuda": true,
+            "--gpu-device": 1,
+            "--beta": [0.5]
+        },
+        {
+            "--session": "05",
+            "--use-cuda": true,
+            "--gpu-device": 2,
+            "--beta": [1.0]
+        },
+        {
+            "--session": "06",
+            "--use-cuda": true,
+            "--gpu-device": 3,
+            "--beta": [2.0]
+        }
+    ]
+}
