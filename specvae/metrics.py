@@ -1,3 +1,4 @@
+from typing import Match
 import numpy as np
 
 # import sklearn.metrics as skm
@@ -73,13 +74,17 @@ MAE = mean_absolute_error
 R2 = r2_score
 
 
-def cosine_similarity(X, Y):
-    if X.shape[0] == Y.shape[0]:
-        return torch.nan_to_num(tm.functional.cosine_similarity(Y, X, reduction='none')).mean()
-    elif X.shape[0] == 1 or Y.shape[0] == 1:
-        return torch.nan_to_num(tm.functional.pairwise_cosine_similarity(Y, X)).mean()
+def cosine_similarity(X, Y, matrix=False):
+    if not matrix:
+        if X.shape[0] == Y.shape[0]:
+            return torch.nan_to_num(tm.functional.cosine_similarity(Y, X, reduction='none')).mean()
+        elif X.shape[0] == 1 or Y.shape[0] == 1:
+            return torch.nan_to_num(tm.functional.pairwise_cosine_similarity(Y, X)).mean()
+        else:
+            raise ValueError('Unsupported input for cosine similarity')
     else:
-        raise ValueError('Unsupported input for cosine similarity')
+        return tm.functional.pairwise_cosine_similarity(X, Y)
+        # raise ValueError('Unsupported input for cosine similarity')
     # cs = skm.pairwise.cosine_similarity(X, Y)
     # if X.shape[0] == Y.shape[0]: # one to one case
     #     return np.trace(cs) / X.shape[0]
@@ -88,17 +93,26 @@ def cosine_similarity(X, Y):
     # else:
     #     raise ValueError('Unsupported input for cosine similarity')
 
-def euclidean_distance(X, Y):
+def euclidean_distance(X, Y, matrix=False):
     # return np.mean(np.linalg.norm(X - Y, axis=1))
-    return torch.mean(torch.nan_to_num(torch.norm(X - Y, dim=1)))
+    if not matrix:
+        return torch.mean(torch.nan_to_num(torch.norm(X - Y, dim=1)))
+    else:
+        return torch.cdist(X, Y)
 
-def mean_percentage_change(y_true, y_pred, eps=1e-7):
+def mean_percentage_change(y_true, y_pred, eps=1e-7, matrix=False):
     # return np.mean((y_pred - y_true) / np.abs(y_true + eps))
-    return torch.mean(torch.nan_to_num((y_pred - y_true) / torch.abs(y_true + eps)))
+    if not matrix:
+        return torch.mean(torch.nan_to_num((y_pred - y_true) / torch.abs(y_true + eps)))
+    else:
+        return torch.nan_to_num((y_pred - y_true) / torch.abs(y_true + eps))
 
-def mean_percentage_difference(y_true, y_pred, eps=1e-7):
+def mean_percentage_difference(y_true, y_pred, eps=1e-7, matrix=False):
     # return np.mean(np.abs(y_true - y_pred) / (y_true + y_pred + eps) / 2.)
-    return torch.mean(torch.nan_to_num(torch.abs(y_true - y_pred) / (y_true + y_pred + eps) * 2.))
+    if not matrix:
+        return torch.mean(torch.nan_to_num(torch.abs(y_true - y_pred) / (y_true + y_pred + eps) * 2.))
+    else:
+        return (torch.abs(y_true.unsqueeze(1) - y_pred) / (y_true.unsqueeze(1) + y_pred + eps) * 2.).mean(dim=2)
 
 cos_sim = cosine_similarity
 eu_dist = euclidean_distance
