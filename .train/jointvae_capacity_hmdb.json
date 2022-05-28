@@ -34,7 +34,7 @@
             "[[$indim, 200, 100, 50, 2], [2, 50, 100, 200, $indim]]",
             "[[$indim, 100, 90, 50, 2], [2, 50, 90, 100, $indim]]"
         ],
-        "--latent-spec": "{'cont': 1, 'disc': [2, 6]}",
+        "--latent-spec": "{'cont': 1, 'disc': [2]}",
         "--cont-min-capacity": [0.0],
         "--cont-max-capacity": [3.0, 5.0, 10.0],
         "--cont-n-iter": [10000],

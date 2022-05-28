@@ -112,6 +112,7 @@ def run_session(parameters, config):
 def main(argc, argv):
     # Set parameters and parse:
     parser = argparse.ArgumentParser(description="...")
+    parser.add_argument('--session', type=str, help='Session number', default='01')
     parser.add_argument('--config-file', type=str, 
         help='Path to training session json file', 
         default=str(utils.get_project_path() / '.train' / 'jointvae_mona.json'))
