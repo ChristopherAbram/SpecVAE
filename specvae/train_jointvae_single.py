@@ -26,31 +26,31 @@ def main(argc, argv):
     parser.add_argument('--dataset', type=str, choices=['MoNA', 'HMDB'], help='Name of a dataset used for training', default='MoNA')
     parser.add_argument('--n-samples', type=int, help='Number of samples used in training, -1 takes all available training samples', default=-1)
     parser.add_argument('--max-mz', type=float, help='Preprocessing parameter, maximum value for m/z parameter', default=2500)
-    parser.add_argument('--n-peaks', type=int, help='Preprocessing parameter, maximum number n of top intensity peaks', default=50)
-    parser.add_argument('--min-intensity', type=float, help='Preprocessing parameter, minimum intensity threshold', default=0.1)
+    parser.add_argument('--n-peaks', type=int, help='Preprocessing parameter, maximum number n of top intensity peaks', default=10)
+    parser.add_argument('--min-intensity', type=float, help='Preprocessing parameter, minimum intensity threshold', default=0.01)
     parser.add_argument('--rescale-intensity', type=boolean_string, help='Preprocessing parameter, normalize intensities to range min-max', default=False)
     parser.add_argument('--normalize-intensity', type=boolean_string, help='Preprocessing parameter, normalize intensities to range [0, 1]', default=True)
     parser.add_argument('--normalize-mass', type=boolean_string, help='Preprocessing parameter, normalize m/z values to range [0, 1]', default=True)
     parser.add_argument('--layer-config', type=str, 
         help='Model parameter, layer configuration for VAE, first layer and last layer has to be the same and equal to 2*n_peaks', 
-        default='[[$indim, 15, 5],  [5, 15, $indim]]')
+        default='[[$indim, 800, 200, 50, 3],  [3, 50, 200, 800, $indim]]')
     
-    parser.add_argument('--latent-spec', type=str, help='', default="{'cont': 3, 'disc': [2, 10]}")
+    parser.add_argument('--latent-spec', type=str, help='', default="{'cont': 1, 'disc': [2, 6]}")
     parser.add_argument('--cont-min-capacity', type=float, help='', default=0.)
     parser.add_argument('--cont-max-capacity', type=float, help='', default=10.)
     parser.add_argument('--cont-n-iter', type=int, help='', default=10000)
-    parser.add_argument('--cont-gamma', type=float, help='', default=50.)
+    parser.add_argument('--cont-gamma', type=float, help='', default=5.)
     parser.add_argument('--cont-capacity', type=str, help='', default='[]')
 
     parser.add_argument('--disc-min-capacity', type=float, help='', default=0.)
     parser.add_argument('--disc-max-capacity', type=float, help='', default=10.)
     parser.add_argument('--disc-n-iter', type=int, help='', default=10000)
-    parser.add_argument('--disc-gamma', type=float, help='', default=50.)
+    parser.add_argument('--disc-gamma', type=float, help='', default=5.)
     parser.add_argument('--disc-capacity', type=str, help='', default='[]')
 
     parser.add_argument('--temperature', type=float, help='Training parameter, beta parameter in beta-VAE', default=1.)
 
-    parser.add_argument('--n-epochs', type=int, help='Training parameter, number of training epochs', default=20)
+    parser.add_argument('--n-epochs', type=int, help='Training parameter, number of training epochs', default=30)
     parser.add_argument('--batch-size', type=int, help='Training parameter, batch size', default=128)
     parser.add_argument('--learning-rate', type=float, help='Training parameter, learning rate', default=0.001)
     parser.add_argument('--resume', type=boolean_string, help='Read associated session csv file and skip training if configuration already exists', default=True)

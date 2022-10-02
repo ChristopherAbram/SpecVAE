@@ -1,0 +1,16 @@
+	superclass_id	superclass	counts
+6	6	Lipids and lipid-like molecules	30462
+18	18	Phenylpropanoids and polyketides	26775
+14	14	Organoheterocyclic compounds	19269
+1	1	Benzenoids	16137
+10	10	Organic acids and derivatives	12012
+12	12	Organic oxygen compounds	9480
+0	0	Alkaloids and derivatives	5275
+7	7	Nucleosides, nucleotides, and analogues	2121
+5	5	Lignans, neolignans and related compounds	1946
+11	11	Organic nitrogen compounds	1550
+17	17	Organosulfur compounds	253
+13	13	Organohalogen compounds	245
+3	3	Hydrocarbon derivatives	142
+2	2	Homogeneous non-metal compounds	47
+16	16	Organophosphorus compounds	39
