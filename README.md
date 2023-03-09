@@ -56,7 +56,7 @@ The file consists of fields:
 - `environment` - the name of the conda/venv environment (not used),
 - `script` - the path to script that executes a single instance of the experiment,
 - `parameters` - the set of parameters listed as key-value, if the value of a parameter is a list, then the supervisor will run the `script` for each item of the list. Note that multiple parameters can be lists, the supervisor will run the `script` for each combination of items from each list, i.e., the cartesian product of lists.
-- `sessions` - the list of units of execution, i.e., specify how many conccurent jobs can run simultaneously. Each session can define `--session`, the unique name of the session, and extend the list of `parameters` that are specific for given session, e.g., the first session can schedule scripts on the GPU and the second on the CPU, schedule sessions on different GPU devices and each session has disjoint set of parameters (4 sessions partition the set of allowed combinations of parameters).
+- `sessions` - the list of units of execution, i.e., specify how many conccurent jobs run simultaneously. Each session defines `--session`, the unique name of the session, and extend the list of `parameters` that are specific for given session, e.g., the first session schedule scripts on the GPU and the second on the CPU, schedule sessions on different GPU devices and each session has disjoint set of parameters (4 sessions partition the set of allowed combinations of parameters).
 
 ### Notes
 Current design of the experiment file and the `train_supervisor` is an environment specific, i.e., can be reproduced only in specific environment, e.g., in case of the experiments in the above list, some of them can run only on machine with 4 GPUs.

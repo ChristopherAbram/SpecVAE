@@ -1,7 +1,7 @@
 {
     "name": "betavae_clf_mona_latent",
     "environment": "specvae",
-    "script": "specvae/train_vae_clf_single.py",
+    "script": "script/train_vae_clf_single.py",
     "parameters": {
         "--model-name": "betavae_clf_latent",
         "--dataset": "MoNA",
@@ -16,53 +16,51 @@
         "--batch-size": 128,
         "--learning-rate": 0.001,
         "--layer-config": [
-            "[[$indim, 15, 3], [3, 15, $indim]]",
-            "[[$indim, 15, 4], [4, 15, $indim]]",
-            "[[$indim, 15, 5], [5, 15, $indim]]",
-            "[[$indim, 15, 10], [10, 15, $indim]]"
+            "[[$indim, 1600, 400, 3],  [3,  400, 1600, $indim]]",
+            "[[$indim, 1600, 400, 10], [10, 400, 1600, $indim]]"
         ],
-        "--beta": [0.01, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 100.0],
-        "--input-columns": "['spectrum']"
+        "--input-columns": "['spectrum']",
+        "--target-column": {
+            "--target-column":          "--class-subset",
+            "ionization_mode_id":       [],
+            "instrument_id":            [0, 129, 130, 155, 161, 133, 122, 157, 136, 116, 115, 135],
+            "instrument_type_id":       [1, 0, 7, 2, 10, 17, 12],
+            "precursor_type_id":        [2, 3, 4, 1, 0, 28],
+            "kingdom_id":               [],
+            "superclass_id":            [6, 18, 14, 1, 10, 12, 0, 7, 5],
+            "class_id":                 [198, 96, 32, 173, 61, 238, 94, 70, 106, 131, 65, 124, 43, 172, 190]
+        }
     },
     "sessions": [
         {
             "--session": "01",
             "--use-cuda": true,
             "--gpu-device": 0,
-            "--target-column": {
-                "--target-column":          "--class-subset",
-                "ionization_mode_id":       [],
-                "instrument_id":            [0, 129, 130, 155, 161, 133, 122, 157, 136, 116, 115, 135]
-            }
+            "--beta": 0.01
         },
         {
             "--session": "02",
             "--use-cuda": true,
-            "--gpu-device": 1,
-            "--target-column": {
-                "--target-column":          "--class-subset",
-                "instrument_type_id":       [1, 0, 7, 2, 10, 17, 12],
-                "precursor_type_id":        [2, 3, 4, 1, 0, 28]
-            }
+            "--gpu-device": 0,
+            "--beta": 0.1
         },
         {
             "--session": "03",
             "--use-cuda": true,
-            "--gpu-device": 1,
-            "--target-column": {
-                "--target-column":          "--class-subset",
-                "kingdom_id":               [],
-                "superclass_id":            [6, 18, 14, 1, 10, 12, 0, 7, 5]
-            }
+            "--gpu-device": 0,
+            "--beta": 0.2
         },
         {
             "--session": "04",
             "--use-cuda": true,
-            "--gpu-device": 1,
-            "--target-column": {
-                "--target-column":          "--class-subset",
-                "class_id":                 [198, 96, 32, 173, 61, 238, 94, 70, 106, 131, 65, 124, 43, 172, 190]
-            }
+            "--gpu-device": 0,
+            "--beta": 0.5
+        },
+        {
+            "--session": "05",
+            "--use-cuda": true,
+            "--gpu-device": 0,
+            "--beta": 1.0
         }
     ]
 }

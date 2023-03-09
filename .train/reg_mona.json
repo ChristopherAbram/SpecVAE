@@ -1,7 +1,7 @@
 {
     "name": "reg_mona",
     "environment": "specvae",
-    "script": "specvae/train_regressor_single.py",
+    "script": "script/train_regressor_single.py",
     "parameters": {
         "--model-name": "reg",
         "--dataset": "MoNA",

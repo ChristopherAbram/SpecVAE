@@ -1,50 +1,45 @@
 import sys
+import ast
 import torch
+import logging
 import numpy as np
 import torchvision as tv
-import itertools as it
-import torch.optim as optim
 import argparse
-import logging
-import ast
+import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
-from specvae import metrics, train, utils, visualize
-import specvae.dataset as dt
-from specvae.utils import boolean_string
-from specvae.vae import VAEandClassifier
-from specvae.train import VAEandClassifierTrainer
+from specvae import train, utils, visualize
+from specvae import dataset as dt
+from specvae.vae import SpecVEA
+from specvae.train import VAETrainer
+
+# os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 
 def main(argc, argv):
     # Set and parse arguments:
-    parser = argparse.ArgumentParser(description='Train VAE model jointly with classifier for metabolomics data')
+    parser = argparse.ArgumentParser(description='Train VAE model with metabolomics data')
     parser.add_argument('--session', type=str, help='Session number, used to identify model database with the process', default='01')
-    parser.add_argument('--use-cuda', type=boolean_string, help='Train model on GPU if True, otherwise use CPU', default=False)
+    parser.add_argument('--use-cuda', type=utils.boolean_string, help='Train model on GPU if True, otherwise use CPU', default=True)
     parser.add_argument('--gpu-device', type=int, help='GPU device number', default=0)
-    parser.add_argument('--model-name', type=str, help='A name of model', default='betavae_clf')
+    parser.add_argument('--model-name', type=str, help='A name of model', default='beta_vae')
     parser.add_argument('--dataset', type=str, choices=['MoNA', 'HMDB'], help='Name of a dataset used for training', default='MoNA')
     parser.add_argument('--n-samples', type=int, help='Number of samples used in training, -1 takes all available training samples', default=-1)
     parser.add_argument('--max-mz', type=float, help='Preprocessing parameter, maximum value for m/z parameter', default=2500)
     parser.add_argument('--n-peaks', type=int, help='Preprocessing parameter, maximum number n of top intensity peaks', default=50)
-    parser.add_argument('--min-intensity', type=float, help='Preprocessing parameter, minimum intensity threshold', default=0.001)
-    parser.add_argument('--rescale-intensity', type=boolean_string, help='Preprocessing parameter, normalize intensities to range min-max', default=False)
-    parser.add_argument('--normalize-intensity', type=boolean_string, help='Preprocessing parameter, normalize intensities to range [0, 1]', default=True)
-    parser.add_argument('--normalize-mass', type=boolean_string, help='Preprocessing parameter, normalize m/z values to range [0, 1]', default=True)
-    parser.add_argument('--beta', type=float, help='Training parameter, beta parameter in beta-VAE', default=1.0)
-    parser.add_argument('--n-epochs', type=int, help='Training parameter, number of training epochs', default=30)
+    parser.add_argument('--min-intensity', type=float, help='Preprocessing parameter, minimum intensity threshold', default=0.1)
+    parser.add_argument('--rescale-intensity', type=utils.boolean_string, help='Preprocessing parameter, normalize intensities to range min-max', default=False)
+    parser.add_argument('--normalize-intensity', type=utils.boolean_string, help='Preprocessing parameter, normalize intensities to range [0, 1]', default=True)
+    parser.add_argument('--normalize-mass', type=utils.boolean_string, help='Preprocessing parameter, normalize m/z values to range [0, 1]', default=True)
+    parser.add_argument('--beta', type=float, help='Training parameter, beta parameter in beta-VAE', default=1.)
+    parser.add_argument('--n-epochs', type=int, help='Training parameter, number of training epochs', default=1)
     parser.add_argument('--batch-size', type=int, help='Training parameter, batch size', default=128)
     parser.add_argument('--learning-rate', type=float, help='Training parameter, learning rate', default=0.001)
-    parser.add_argument('--layer-config', type=str, 
+    parser.add_argument('--layer-config', type=str,
         help='Model parameter, layer configuration for VAE, first layer and last layer has to be the same and equal to 2*n_peaks', 
         default='[[$indim, 15, 5],  [5, 15, $indim]]')
-    parser.add_argument('--input-columns', type=str, help='Columns from dataset used as an input for classifier', 
-        default='["spectrum", "collision_energy", "instrument_type_id"]')
-    parser.add_argument('--target-column', type=str, help='Name of the target column for classification model', default='ionization_mode_id')
-    parser.add_argument('--class-subset', type=str, 
-        help='Subset of classes to use for classification, empty array means that all classes will participate in training', default='[]')
-    parser.add_argument('--resume', type=boolean_string, 
-        help='Read associated session csv file and skip training if configuration already exists', default=True)
+    parser.add_argument('--resume', type=utils.boolean_string, help='Read associated session csv file and skip training if configuration already exists', default=True)
+    parser.add_argument('--preload', type=utils.boolean_string, help='Whether to load and transform the entire dataset prior to training', default=False)
     args = parser.parse_args()
 
     # Processing and model parameters:
@@ -63,11 +58,8 @@ def main(argc, argv):
     normalize_mass          = args.normalize_mass
     layer_config            = ast.literal_eval(args.layer_config.replace('$indim', str(2*max_num_peaks)))
 
-    # Classification model parameters:
-    input_columns           = ast.literal_eval(args.input_columns)
-    target_column           = args.target_column
-    class_subset            = ast.literal_eval(args.class_subset)
-    clf_layer_config        = lambda indim: [indim, int(indim / 1.5)]
+    # Column settings:
+    input_columns           = ['spectrum']
     types                   = [torch.float32] * len(input_columns)
 
     # Train parameters:
@@ -75,6 +67,7 @@ def main(argc, argv):
     batch_size              = args.batch_size
     learning_rate           = args.learning_rate
     resume                  = args.resume
+    preload                 = args.preload
     enable_profiler         = False
 
     # Open session log file:
@@ -86,21 +79,6 @@ def main(argc, argv):
         filename=str(logfilepath), 
         format='[%(levelname)s] %(asctime)s (%(threadName)s): %(message)s', 
         level=logging.INFO)
-
-    # Load metadata:
-    metadata = dt.load_metadata(dataset)
-
-    # Remove target_column from input_columns if one exists:
-    input_columns = input_columns.copy()
-    if target_column in input_columns:
-        input_columns.remove(target_column)
-    types = [torch.float32] * len(input_columns)
-
-    # Compute input size and create relevant layers:
-    input_sizes = [layer_config[0][-1]]
-    input_sizes += [metadata[name]['n_class'] if name in metadata else 1 for name in input_columns if name != 'spectrum']
-    indim = np.array(input_sizes).sum()
-    clf_layers = clf_layer_config(indim)
 
     # Load experiment csv file and find current configuration:
     df = None
@@ -115,9 +93,6 @@ def main(argc, argv):
                 df = pd.read_csv(filepath, index_col=False, error_bad_lines=False)
                 # Find configuration:
                 res = df[
-                    (df['target_column_id'].isin(          [target_column])) & 
-                    (df['input_columns'].isin(             [str(input_columns)])) & 
-                    (df['class_subset'].isin(              [str(class_subset)])) & 
                     (df['param_max_num_peaks']          == max_num_peaks) & 
                     (df['param_min_intensity']          == min_intensity) & 
                     (df['param_rescale_intensity']      == rescale_intensity) & 
@@ -147,20 +122,17 @@ def main(argc, argv):
     elif resume:
         logging.info("Configuration hasn't been trained yet. RUN")
 
-
-     # Get device:
+    # Get device:
     device, cpu_device = utils.device(use_cuda=use_cuda, dev_name=('cuda:%d' % gpu_device))
 
-    # Prepare transform:
-    trans_list = [
+    # Set the transformation:
+    transform = tv.transforms.Compose([
         dt.SplitSpectrum(),
         dt.TopNPeaks(n=max_num_peaks),
         dt.FilterPeaks(max_mz=spec_max_mz, min_intensity=min_intensity),
         dt.Normalize(intensity=normalize_intensity, mass=normalize_mass, rescale_intensity=rescale_intensity),
         dt.ToMZIntConcatAlt(max_num_peaks=max_num_peaks),
-    ]
-    ohe_list = [dt.Int2OneHot(name, metadata[name]['n_class']) for name in input_columns if name in metadata]
-    transform = tv.transforms.Compose(trans_list + ohe_list)
+    ])
 
     revtrans = tv.transforms.Compose([
         dt.ToMZIntDeConcatAlt(max_num_peaks=max_num_peaks),
@@ -169,9 +141,8 @@ def main(argc, argv):
     ])
 
     # Load and transform dataset:
-    train_loader, valid_loader, test_loader, metadata, class_weights = dt.load_data_classification(
-        dataset, transform, n_samples, batch_size, True, device, 
-        input_columns, types, target_column, True, class_subset, view=dt.JointTrainingDataset)
+    train_loader, valid_loader, test_loader, metadata = dt.load_data(
+        dataset, transform, n_samples, batch_size, True, device, input_columns, types, preload=preload)
 
     config = {
         # Model params:
@@ -181,27 +152,8 @@ def main(argc, argv):
         'beta':                 beta,
         'limit':                1.,
         'dropout':              0.,
-        'input_columns':        ['spectrum'],
-        'types':                [torch.float32],
-        'clf_n_classes':        metadata[target_column]['n_class'] if len(class_subset) == 0 else len(class_subset),
-        'clf_target_column':    target_column.replace('_id', ''),
-        'clf_target_column_id': target_column,
-        'clf_input_columns':    input_columns,
-        'clf_input_sizes':      input_sizes,
-        'clf_layer_config':     clf_layers,
-        'clf_config':           {
-            'layer_config':         clf_layers,
-            'n_classes':            metadata[target_column]['n_class'] if len(class_subset) == 0 else len(class_subset),
-            'dropout':              0.,
-            'transform':            tv.transforms.Compose([dt.Identity()]),
-            'class_weights':        class_weights,
-            'target_column':        target_column.replace('_id', ''),
-            'target_column_id':     target_column,
-            'input_columns':        input_columns,
-            'input_sizes':          input_sizes,
-            'types':                types,
-            'class_subset':         class_subset,
-        },
+        'input_columns':        input_columns,
+        'types':                types,
         # Preprocessing params:
         'dataset':              dataset,
         'transform':            transform,
@@ -224,9 +176,9 @@ def main(argc, argv):
 
     try:
         # Create model:
-        model = VAEandClassifier(config, device)
-        paths = train.prepare_training_session(
-            model, subdirectory=config['dataset'], session_name=config['name'], session=session)
+        model = SpecVEA(config, device)
+        paths = train.prepare_training_session(model, 
+            subdirectory=config['dataset'], session_name=config['name'], session=session)
 
         profiler = None
         if enable_profiler:
@@ -240,12 +192,11 @@ def main(argc, argv):
             log_dir=paths['training_path'], 
             flush_secs=10)
         
-        trainer = VAEandClassifierTrainer(model, writer)
+        trainer = VAETrainer(model, writer)
         trainer.compile(
             optimizer=optim.Adam(model.parameters(), lr=config['learning_rate']),
             metrics=['loss', 'kldiv', 'recon'],
-            evaluation_metrics=[],
-            evaluation_metrics_sub=[])
+            evaluation_metrics=[])
 
         # Train the model:
         history = trainer.fit(
@@ -254,25 +205,24 @@ def main(argc, argv):
             validation_data=valid_loader, 
             log_freq=10, 
             visualization=lambda model, data_batch, dirpath, epoch: visualize.plot_spectra_grid(
-                model, data_batch, dirpath, epoch, device, transform=revtrans),
+            model, data_batch, dirpath, epoch, device, transform=revtrans),
             dirpath=paths['img_path'], 
             profiler=profiler)
 
         train.export_training_session(trainer, paths, 
             train_loader, valid_loader, test_loader, config['n_samples'], 
             session=session,
-            evaluation_metrics=['cos_sim', 'eu_dist', 'per_chag', 'per_diff'], 
-            evaluation_metrics_sub=['accuracy_score', 'balanced_accuracy_score', 
-                'recall_score_macro', 'precision_score_macro', 'f1_score_macro'])
+            metrics=['loss', 'kldiv', 'recon'],
+            evaluation_metrics=['cos_sim', 'eu_dist', 'per_chag', 'per_diff'])
 
     except Exception as e:
-        logging.exception("Error has occured while training the model: %s" % str(e))
+        logging.error("Error has occured while training the model: %s" % str(e))
         filepath = utils.get_project_path() / '.model' / config['dataset'] / config['name'] / ('error%s.csv' % session)
         hparams, rhparams = train.export_training_parameters(config, paths, session)
         if train.export_to_csv(hparams, rhparams, {}, paths, session, filepath):
             print("Add log to ", filepath)
         return 1
-
+    
     return 0
 
 

@@ -1,7 +1,7 @@
 {
     "name": "beta_vae",
     "environment": "specvae",
-    "script": "specvae/train_vae_single.py",
+    "script": "script/train_vae_single.py",
     "parameters": {
         "--model-name": "beta_vae",
         "--dataset": "MoNA",

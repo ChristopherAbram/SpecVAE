@@ -32,7 +32,7 @@ def precision_score(y_true, y_pred):
     return tm.functional.precision(y_pred, y_true)
 
 def f1_score(y_true, y_pred):
-    return tm.functional.f1(y_pred, y_true)
+    return tm.functional.f1_score(y_pred, y_true)
 
 def recall_score_macro(y_true, y_pred):
     # return skm.recall_score(y_true, y_pred, average='macro')
@@ -47,7 +47,7 @@ def precision_score_macro(y_true, y_pred):
 def f1_score_macro(y_true, y_pred):
     # return skm.f1_score(y_true, y_pred, average='macro')
     n_classes = torch.max(y_true).item() + 1
-    return tm.functional.f1(y_pred, y_true, average='macro', num_classes=n_classes)
+    return tm.functional.f1_score(y_pred, y_true, average='macro', num_classes=n_classes)
 
 def mean_squared_error(y_true, y_pred):
     return tm.functional.mean_squared_error(y_pred, y_true)
@@ -182,11 +182,11 @@ class PFI:
         device = torch.device('cpu')
         if isinstance(model, (BaseClassifier, VAEandClassifier)):
             train_data, valid_data, test_data, metadata, cw = dt.load_data_classification(
-                dataset, model.transform, n_samples, int(1e7), False, device, 
+                dataset, model.transform, n_samples, int(1e7), False, device,
                 input_columns, types, target_column_id, True, class_subset)
         elif isinstance(model, (BaseRegressor, VAEandRegressor)):
             train_data, valid_data, test_data, metadata = dt.load_data_regression(
-                dataset, model.transform, n_samples, int(1e7), False, device, 
+                dataset, model.transform, n_samples, int(1e7), False, device,
                 input_columns, types, target_column, True)
         X, y, ids = next(iter(test_data))
         return X, y, ids

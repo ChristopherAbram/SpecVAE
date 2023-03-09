@@ -1,7 +1,7 @@
 {
     "name": "jointvae_hmdb_2",
     "environment": "specvae",
-    "script": "specvae/train_jointvae_single.py",
+    "script": "script/train_jointvae_single.py",
     "parameters": {
         "--model-name": "jointvae_2",
         "--dataset": "HMDB",

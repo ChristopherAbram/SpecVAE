@@ -1,7 +1,7 @@
 {
     "name": "beta_vae_test",
     "environment": "specvae",
-    "script": "specvae/train_vae_single.py",
+    "script": "script/train_vae_single.py",
     "resume_setting": {
         "--dataset": "dataset",
         "--n-samples": "param_n_samples",

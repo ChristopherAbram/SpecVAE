@@ -1,7 +1,7 @@
 {
     "name": "clf_hmdb_spectrum",
     "environment": "specvae",
-    "script": "specvae/train_classifier_single.py",
+    "script": "script/train_classifier_single.py",
     "parameters": {
         "--model-name": "clf_spectrum",
         "--dataset": "HMDB",

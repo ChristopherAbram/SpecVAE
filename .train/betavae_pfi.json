@@ -1,7 +1,7 @@
 {
     "name": "betavae_pfi",
     "environment": "specvae",
-    "script": "specvae/permutation_feature_importance.py",
+    "script": "script/permutation_feature_importance.py",
     "parameters": {
         "--csv-filepath": {
             "--csv-filepath":       "--model-base-path",

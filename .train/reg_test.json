@@ -1,7 +1,7 @@
 {
     "name": "reg_test",
     "environment": "specvae",
-    "script": "specvae/train_regressor_single.py",
+    "script": "script/train_regressor_single.py",
     "resume_setting": {
         "--dataset": "dataset",
         "--n-samples": "param_n_samples",

@@ -1,7 +1,7 @@
 {
     "name": "clf_mona",
     "environment": "specvae",
-    "script": "specvae/train_classifier_single.py",
+    "script": "script/train_classifier_single.py",
     "parameters": {
         "--model-name": "clf",
         "--dataset": "MoNA",

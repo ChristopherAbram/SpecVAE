@@ -34,7 +34,6 @@ def main(argc, argv):
     parser.add_argument('--layer-config', type=str, 
         help='Model parameter, layer configuration for VAE, first layer and last layer has to be the same and equal to 2*n_peaks', 
         default='[[$indim, 800, 200, 50, 3],  [3, 50, 200, 800, $indim]]')
-    
     parser.add_argument('--latent-spec', type=str, help='', default="{'cont': 1, 'disc': [2, 6]}")
     parser.add_argument('--cont-min-capacity', type=float, help='', default=0.)
     parser.add_argument('--cont-max-capacity', type=float, help='', default=10.)
@@ -50,10 +49,11 @@ def main(argc, argv):
 
     parser.add_argument('--temperature', type=float, help='Training parameter, beta parameter in beta-VAE', default=1.)
 
-    parser.add_argument('--n-epochs', type=int, help='Training parameter, number of training epochs', default=30)
+    parser.add_argument('--n-epochs', type=int, help='Training parameter, number of training epochs', default=1)
     parser.add_argument('--batch-size', type=int, help='Training parameter, batch size', default=128)
     parser.add_argument('--learning-rate', type=float, help='Training parameter, learning rate', default=0.001)
     parser.add_argument('--resume', type=boolean_string, help='Read associated session csv file and skip training if configuration already exists', default=True)
+    parser.add_argument('--preload', type=utils.boolean_string, help='Whether to load and transform the entire dataset prior to training', default=False)
     args = parser.parse_args()
 
     # Processing and model parameters:
@@ -103,6 +103,7 @@ def main(argc, argv):
     batch_size              = args.batch_size
     learning_rate           = args.learning_rate
     resume                  = args.resume
+    preload                 = args.preload
     enable_profiler         = False
 
     # Open session log file:
@@ -189,7 +190,8 @@ def main(argc, argv):
 
     # Load and transform dataset:
     train_loader, valid_loader, test_loader, metadata = dt.load_data(
-        dataset, transform, n_samples, batch_size, True, device, input_columns, types)
+        dataset, transform, n_samples, batch_size, True, device, input_columns,
+        types, preload=preload)
 
     config = {
         # Model params:

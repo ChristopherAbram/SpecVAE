@@ -1,4 +1,4 @@
-import os, sys
+import sys
 import pandas as pd
 import argparse
 import logging
@@ -7,7 +7,7 @@ from datetime import datetime
 
 import specvae.utils as utils
 from specvae.metrics import PFI
-        
+
 
 def main(argc, argv):
     # Set and parse arguments:

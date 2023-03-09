@@ -1,7 +1,7 @@
 {
     "name": "betavae_clf_hmdb_latent",
     "environment": "specvae",
-    "script": "specvae/train_vae_clf_single.py",
+    "script": "script/train_vae_clf_single.py",
     "parameters": {
         "--model-name": "betavae_clf_latent",
         "--dataset": "HMDB",

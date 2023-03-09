@@ -1,7 +1,7 @@
 {
     "name": "betavae_reg_hmdb",
     "environment": "specvae",
-    "script": "specvae/train_vae_reg_single.py",
+    "script": "script/train_vae_reg_single.py",
     "parameters": {
         "--model-name": "betavae_reg",
         "--dataset": "HMDB",

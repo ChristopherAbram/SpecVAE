@@ -1,7 +1,7 @@
 {
     "name": "clf",
     "environment": "specvae",
-    "script": "specvae/train_classifier_single.py",
+    "script": "script/train_classifier_single.py",
     "resume_setting": {
         "--dataset": "dataset",
         "--n-samples": "param_n_samples",

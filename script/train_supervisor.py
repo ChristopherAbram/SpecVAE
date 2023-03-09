@@ -1,4 +1,4 @@
-import sys, os
+import sys
 import argparse
 from specvae import utils
 import itertools as it
@@ -11,7 +11,15 @@ import logging
 def dict_product(dicts):
     return (dict(zip(dicts, x)) for x in it.product(*dicts.values()))
 
+
 def run_session(parameters, config):
+    """
+    Run single session of the supervisor.
+
+    :param parameters: Dict with parameters
+    :param config: The whole json config file
+    :return: 0 if successful, otherwise non-zero value.
+    """
     path = utils.get_project_path()
     name = config['name']
     script = config['script']
@@ -40,22 +48,6 @@ def run_session(parameters, config):
     arg3_len = len(arg_list_3)
     logging.info("[%s] Run session, items: %d" % (session_name, args_len * (arg3_len if arg3_len > 0 else 1)))
 
-    # # Load experiment csv file:
-    # df = None
-    # if resume_setting is not None:
-    #     try:
-    #         import pandas as pd
-    #         import os
-    #         filepath = utils.get_project_path() / '.model' / dataset / name / ('experiment%s.csv' % session_name)
-    #         if os.path.exists(filepath):
-    #             logging.info("[%s] Resume session from file: %s" % (session_name, str(filepath)))
-    #             df = pd.read_csv(filepath, index_col=False, error_bad_lines=False)
-    #         else:
-    #             logging.info("[%s] Session file doesn't exist, run without resume" % session_name)
-
-    #     except Exception as e:
-    #         print("Error", e)
-
     if arg3_len == 0:
         arg_list_3.append([])
 
@@ -63,23 +55,6 @@ def run_session(parameters, config):
     with open(str(path / '.out' / name / ('error%s.txt' % session_name)), 'w') as err:
         for dict_arg in arg_list_3:
             for args in args_product:
-                # Skip if configuration have already been trained:
-                # args_ = {**non_array_params, **args}
-                # query_array = []
-                # for arg_name, param_name in resume_setting.items():
-                #     value = args_[arg_name]
-                #     if param_name == 'layer_config':
-                #         if '$indim' in value:
-                #             # 
-                #             value = value.replace('$indim', 2*args_['--n-peaks'])
-                #     if isinstance(value, str):
-                #         query_array.append('`%s` == "%s"' % (param_name, value))
-                #     else:
-                #         query_array.append('`%s` == %s' % (param_name, str(value)))
-                # query = ' and '.join(query_array)
-                # if df is not None:
-                #     pass
-                
                 arg_list_two = []
                 for k, v in args.items():
                     arg_list_two += [k, str(v)]
@@ -105,16 +80,17 @@ def run_session(parameters, config):
         logging.info("[%s] Session finished %d tasks without errors" % (session_name, args_len))
     else:
         logging.info("[%s] Session finished %d tasks with %d errors and %d exceptions" % (session_name, args_len, err_count, ex_count))
-        
     return 0
-    
+
 
 def main(argc, argv):
     # Set parameters and parse:
-    parser = argparse.ArgumentParser(description="...")
-    parser.add_argument('--config-file', type=str, 
-        help='Path to training session json file', 
-        default=str(utils.get_project_path() / '.train' / 'jointvae_mona.json'))
+    parser = argparse.ArgumentParser(
+        description="Supervise training/evaluation of experiment defined in the JSON file."
+                    "The script allows to run multiple instances of the experiment simultaneously.")
+    parser.add_argument('--config-file', type=str,
+                        help='Path to training session json file',
+                        default=str(utils.get_project_path() / '.train' / 'jointvae_mona.json'))
     args = parser.parse_args()
 
     # Parameters:
