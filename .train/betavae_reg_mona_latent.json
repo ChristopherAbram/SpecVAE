@@ -16,42 +16,29 @@
         "--batch-size": 128,
         "--learning-rate": 0.001,
         "--layer-config": [
-            "[[$indim, 1600, 400, 3],  [3,  400, 1600, $indim]]",
             "[[$indim, 1600, 400, 10], [10, 400, 1600, $indim]]"
         ],
-        "--input-columns": "['spectrum']",
-        "--target-column": ["collision_energy", "precursor_mz", "total_exact_mass"]
+        "--beta": [0.01],
+        "--input-columns": "['spectrum']"
     },
     "sessions": [
         {
             "--session": "01",
             "--use-cuda": true,
             "--gpu-device": 0,
-            "--beta": 0.01
+            "--target-column": ["collision_energy"]
         },
         {
             "--session": "02",
             "--use-cuda": true,
             "--gpu-device": 0,
-            "--beta": 0.1
+            "--target-column": ["precursor_mz"]
         },
         {
             "--session": "03",
             "--use-cuda": true,
             "--gpu-device": 0,
-            "--beta": 0.2
-        },
-        {
-            "--session": "04",
-            "--use-cuda": true,
-            "--gpu-device": 0,
-            "--beta": 0.5
-        },
-        {
-            "--session": "05",
-            "--use-cuda": true,
-            "--gpu-device": 0,
-            "--beta": 1.0
+            "--target-column": ["total_exact_mass"]
         }
     ]
 }
