@@ -1,5 +1,9 @@
 # SpecVAE
 
+## Prerequisites
+- Ubuntu 18.04 or later,
+- Python 3.8.x.
+
 ## Install Requirements
 Follow below instructions to install the venv:
 ```bash 
@@ -8,7 +12,7 @@ python -m venv .venv
 source .venv/bin/activate
 
 # Install python requirements
-pip install -r requirements.txt
+pip install -r requirements.txt --no-cache-dir
 ```
 
 ## Run Experiment
