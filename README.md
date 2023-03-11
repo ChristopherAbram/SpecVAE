@@ -1,5 +1,7 @@
 # SpecVAE
 
+<img src=".img/Figure_8.png" width="80%" style="display: block; margin: 0 auto; background: #fff;"/>
+
 ## Prerequisites
 - Ubuntu 18.04 or later,
 - Python 3.8.x.
