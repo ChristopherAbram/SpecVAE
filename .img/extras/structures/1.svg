@@ -1,0 +1,603 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="180"
+   height="180"
+   version="1.1"
+   zoomAndPan="magnify"
+   preserveAspectRatio="xMidyMid"
+   contentScriptType="application/ecmascript"
+   id="d45e476c-d45b-11ec-ae07-3cfdfe769840"
+   sodipodi:docname="1.svg"
+   inkscape:version="1.1.1 (3bf5ae0d25, 2021-09-20)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs169" />
+  <sodipodi:namedview
+     id="namedview167"
+     pagecolor="#505050"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:pageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     showgrid="false"
+     inkscape:zoom="4.6777778"
+     inkscape:cx="89.893112"
+     inkscape:cy="107.20903"
+     inkscape:window-width="1920"
+     inkscape:window-height="1027"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="g164" />
+  <g
+     id="g164">
+    <g
+       id="g1144">
+      <text
+         x="42.6943"
+         y="87.1556"
+         fill="#000000"
+         font-family="Helvetica"
+         font-size="7.7pt"
+         text-anchor="middle"
+         font-weight="bold"
+         id="text8">O</text>
+      <text
+         x="22.2617"
+         y="98.8473"
+         fill="#000000"
+         font-family="Helvetica"
+         font-size="7.7pt"
+         text-anchor="middle"
+         font-weight="bold"
+         id="text10">O</text>
+      <text
+         x="63.0364"
+         y="99.0051"
+         fill="#000000"
+         font-family="Helvetica"
+         font-size="7.7pt"
+         text-anchor="middle"
+         font-weight="bold"
+         id="text12">O</text>
+      <text
+         x="12"
+         y="116.464"
+         fill="#000000"
+         font-family="Helvetica"
+         font-size="7.7pt"
+         text-anchor="middle"
+         font-weight="bold"
+         id="text14">O</text>
+      <text
+         x="22.1251"
+         y="134.159"
+         fill="#000000"
+         font-family="Helvetica"
+         font-size="7.7pt"
+         text-anchor="middle"
+         font-weight="bold"
+         id="text16">O</text>
+      <text
+         x="157.942"
+         y="103.95"
+         fill="#000000"
+         font-family="Helvetica"
+         font-size="7.7pt"
+         text-anchor="middle"
+         font-weight="bold"
+         id="text18">O</text>
+      <text
+         x="168"
+         y="86.2163"
+         fill="#000000"
+         font-family="Helvetica"
+         font-size="7.7pt"
+         text-anchor="middle"
+         font-weight="bold"
+         id="text20">O</text>
+      <text
+         x="62.9457"
+         y="122.546"
+         fill="#000000"
+         font-family="Helvetica"
+         font-size="7.7pt"
+         text-anchor="middle"
+         font-weight="bold"
+         id="text22">O</text>
+      <text
+         x="42.5578"
+         y="122.468"
+         fill="#000000"
+         font-family="Helvetica"
+         font-size="7.7pt"
+         text-anchor="middle"
+         font-weight="bold"
+         id="text24">O</text>
+      <line
+         x1="153.38"
+         y1="48.2907"
+         x2="147.613"
+         y2="58.5512"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line26" />
+      <line
+         x1="141.61"
+         y1="48.4272"
+         x2="147.613"
+         y2="58.5512"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line28" />
+      <line
+         x1="78.3759"
+         y1="130.851"
+         x2="84.2212"
+         y2="120.635"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line30" />
+      <line
+         x1="90.1465"
+         y1="130.807"
+         x2="84.2212"
+         y2="120.635"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line32" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 95.3268,101.905 93.4752,90.1192 97.3597,90.1491 "
+         id="polygon34" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 126.426,95.9383 127.076,97.0935 126.671,97.2411 "
+         id="polygon36" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 127.726,98.2486 128.377,99.4038 127.16,99.8467 126.915,98.5439 "
+         id="polygon38" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 129.027,100.559 129.677,101.714 127.649,102.452 127.405,101.15 "
+         id="polygon40" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 130.327,102.869 130.978,104.024 128.138,105.058 127.894,103.755 "
+         id="polygon42" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 131.628,105.18 132.278,106.335 128.628,107.664 128.383,106.361 "
+         id="polygon44" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 116.231,101.824 125.286,109.593 122.31,112.09 "
+         id="polygon46" />
+      <line
+         x1="116.231"
+         y1="78.2823"
+         x2="106.038"
+         y2="84.1676"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line48" />
+      <line
+         x1="116.231"
+         y1="78.2823"
+         x2="126.426"
+         y2="84.1676"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line50" />
+      <line
+         x1="116.917"
+         y1="80.6273"
+         x2="124.053"
+         y2="84.747"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line52" />
+      <line
+         x1="106.038"
+         y1="84.1676"
+         x2="106.038"
+         y2="95.9383"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line54" />
+      <line
+         x1="105.85"
+         y1="120.295"
+         x2="116.421"
+         y2="114.083"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line56" />
+      <line
+         x1="105.85"
+         y1="120.295"
+         x2="95.2326"
+         y2="114.165"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line58" />
+      <line
+         x1="73.2604"
+         y1="101.479"
+         x2="84.4178"
+         y2="95.265"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line60" />
+      <line
+         x1="73.2604"
+         y1="101.479"
+         x2="73.1615"
+         y2="114.25"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line62" />
+      <line
+         x1="84.4178"
+         y1="95.265"
+         x2="95.3268"
+         y2="101.905"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line64" />
+      <line
+         x1="116.421"
+         y1="114.083"
+         x2="116.231"
+         y2="101.824"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line66" />
+      <line
+         x1="158.721"
+         y1="64.852"
+         x2="158.721"
+         y2="77.6232"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line68" />
+      <line
+         x1="158.721"
+         y1="64.852"
+         x2="147.613"
+         y2="58.5512"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line70" />
+      <line
+         x1="136.948"
+         y1="102.232"
+         x2="147.613"
+         y2="96.1831"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line72" />
+      <line
+         x1="136.948"
+         y1="102.232"
+         x2="126.426"
+         y2="95.9383"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line74" />
+      <line
+         x1="158.721"
+         y1="77.6232"
+         x2="147.613"
+         y2="83.9228"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line76" />
+      <line
+         x1="147.613"
+         y1="96.1831"
+         x2="147.613"
+         y2="83.9228"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line78" />
+      <line
+         x1="136.652"
+         y1="65.1074"
+         x2="136.948"
+         y2="77.8751"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line80" />
+      <line
+         x1="136.652"
+         y1="65.1074"
+         x2="147.613"
+         y2="58.5512"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line82" />
+      <line
+         x1="126.426"
+         y1="84.1676"
+         x2="136.948"
+         y2="77.8751"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line84" />
+      <line
+         x1="126.426"
+         y1="84.1676"
+         x2="126.426"
+         y2="95.9383"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line86" />
+      <line
+         x1="136.948"
+         y1="77.8751"
+         x2="147.613"
+         y2="83.9228"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line88" />
+      <line
+         x1="95.2326"
+         y1="114.165"
+         x2="84.2212"
+         y2="120.635"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line90" />
+      <line
+         x1="95.2326"
+         y1="114.165"
+         x2="95.3268"
+         y2="101.905"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line92" />
+      <line
+         x1="106.038"
+         y1="95.9383"
+         x2="95.3268"
+         y2="101.905"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line94" />
+      <line
+         x1="106.038"
+         y1="95.9383"
+         x2="116.231"
+         y2="101.824"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line96" />
+      <line
+         x1="73.1615"
+         y1="114.25"
+         x2="84.2212"
+         y2="120.635"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line98" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 73.1615,114.25 68.2807,119.281 66.3511,115.91 "
+         id="polygon100" />
+      <line
+         x1="42.6484"
+         y1="96.4762"
+         x2="32.4327"
+         y2="102.323"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line102" />
+      <line
+         x1="42.6484"
+         y1="96.4762"
+         x2="52.8194"
+         y2="102.4"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line104" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 42.6484,96.4762 42.436,95.5996 42.8677,95.6013 "
+         id="polygon106" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 42.2236,94.723 42.0112,93.8464 43.3061,93.8515 43.0869,94.7264 "
+         id="polygon108" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 41.7988,92.9698 41.5864,92.0932 43.7446,92.1017 43.5253,92.9766 "
+         id="polygon110" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 41.374,91.2167 41.1616,90.3401 44.183,90.3518 43.9638,91.2268 "
+         id="polygon112" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 40.9492,89.4635 40.7369,88.5869 44.6215,88.602 44.4023,89.4769 "
+         id="polygon114" />
+      <line
+         x1="32.4327"
+         y1="102.323"
+         x2="32.3868"
+         y2="114.093"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line116" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 32.4327,102.323 25.6541,100.622 27.6095,97.265 "
+         id="polygon118" />
+      <line
+         x1="52.8194"
+         y1="102.4"
+         x2="52.7747"
+         y2="114.171"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line120" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 52.8194,102.4 57.7017,97.3694 59.6308,100.741 "
+         id="polygon122" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 32.3868,114.093 31.3589,114.93 31.1445,114.556 "
+         id="polygon124" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 30.331,115.767 29.3031,116.604 28.66,115.48 29.9022,115.018 "
+         id="polygon126" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 28.2752,117.441 27.2473,118.277 26.1754,116.404 27.4177,115.942 "
+         id="polygon128" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 26.2194,119.114 25.1915,119.951 23.6909,117.328 24.9332,116.866 "
+         id="polygon130" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 24.1636,120.788 23.1356,121.625 21.2064,118.253 22.4487,117.791 "
+         id="polygon132" />
+      <line
+         x1="32.3868"
+         y1="114.093"
+         x2="37.6876"
+         y2="117.181"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line134" />
+      <line
+         x1="22.5959"
+         y1="119.209"
+         x2="16.8702"
+         y2="115.874"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line136" />
+      <line
+         x1="21.7462"
+         y1="120.668"
+         x2="16.8702"
+         y2="117.828"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line138" />
+      <line
+         x1="22.171"
+         y1="119.939"
+         x2="22.1498"
+         y2="125.376"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line140" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 52.7747,114.171 53.5279,114.36 53.3106,114.733 "
+         id="polygon142" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 54.2811,114.549 55.0343,114.738 54.3824,115.857 53.8465,115.295 "
+         id="polygon144" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 55.7874,114.927 56.5406,115.116 55.4542,116.981 54.9183,116.419 "
+         id="polygon146" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 57.2938,115.305 58.047,115.494 56.5261,118.105 55.9901,117.543 "
+         id="polygon148" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 58.8001,115.683 59.5533,115.872 57.5979,119.229 57.062,118.667 "
+         id="polygon150" />
+      <line
+         x1="52.7747"
+         y1="114.171"
+         x2="47.4279"
+         y2="117.231"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line152" />
+      <polygon
+         fill="#000000"
+         stroke="none"
+         points=" 147.613,83.9228 158.81,88.0398 156.893,91.4188 "
+         id="polygon154" />
+      <line
+         x1="157.007"
+         y1="89.7358"
+         x2="157.049"
+         y2="95.1666"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line156" />
+      <line
+         x1="158.695"
+         y1="89.7228"
+         x2="158.737"
+         y2="95.1666"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line158" />
+      <line
+         x1="157.851"
+         y1="89.7293"
+         x2="163.13"
+         y2="86.6278"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line160" />
+      <line
+         x1="126.426"
+         y1="95.9383"
+         x2="116.231"
+         y2="101.824"
+         stroke="#000000"
+         stroke-width="0.932318"
+         id="line162" />
+    </g>
+    <title
+       id="title2">C36H56O9</title>
+    <desc
+       content="structured text"
+       id="desc4">C36H56O9</desc>
+    <!-- C36H56O9 -->
+  </g>
+</svg>
