@@ -2,7 +2,9 @@ import pandas as pd
 import numpy as np
 import torch
 from tqdm import tqdm
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
+
+from . import utils
 
 
 def spectrum_split_string(spec):
@@ -607,9 +609,6 @@ class Spectra(Dataset):
         # If data_frame is empty, attempt to load one from path (if specified)
         if data_frame is None:
             data_frame = Spectra.open(filepath, columns)
-        # Subsample part of the dataframe based on number of rows
-        if limit > 0:
-            data_frame = data_frame.sample(limit)
         # Load and transform data
         cols = data_frame.columns.tolist()
         data = {col: [] for col in cols}
@@ -707,8 +706,17 @@ class HMDB(Spectra):
         return data_frame
 
 
-from . import utils
-from torch.utils.data import DataLoader, WeightedRandomSampler
+def sample_n(df: pd.DataFrame, n: int) -> pd.DataFrame:
+    """
+    Sample at most n samples from dataframe, don't sample if size of data frame is smaller then n.
+
+    :param df: Data frame to sample from
+    :param n: Number of samples to draw
+    :return: New data frame with at most n samples.
+    """
+    if n < len(df):
+        return df.sample(n, random_state=123)
+    return df
 
 
 def load_metadata(dataset):
@@ -752,6 +760,8 @@ def load_spectra_data(dataset, transform, n_samples=-1,
     metadata = load_metadata(dataset)
     if split:
         df_train, df_valid, df_test = Spectra.get_by_split(data_path, columns=columns)
+        if n_samples > 0:
+            df_train, df_valid, df_test = sample_n(df_train, n_samples), sample_n(df_valid, n_samples), sample_n(df_train, n_samples)
         if preload:
             print("Load train data")
             train_data = Spectra.preload_tensor(
@@ -768,6 +778,8 @@ def load_spectra_data(dataset, transform, n_samples=-1,
     else:
         if df is None:
             df = Spectra.open(data_path, columns=columns)
+        if n_samples > 0:
+            df = sample_n(df, n_samples)
         if preload:
             print("Load data")
             data = Spectra.preload_tensor(device=device, data_frame=df, transform=transform,
@@ -858,6 +870,8 @@ def load_spectra_data_classification(dataset, transform, n_samples=-1, device=No
     data_path = utils.get_project_path() / '.data' / dataset / ('%s_full.csv' % dataset)
     metadata = load_metadata(dataset)
     df_train, df_valid, df_test = Spectra.get_by_split(data_path, columns=columns)
+    if n_samples > 0:
+        df_train, df_valid, df_test = sample_n(df_train, n_samples), sample_n(df_valid, n_samples), sample_n(df_train, n_samples)
     if class_column is not None and reject_noclass:
         print("Reject samples with 'no-class' assigned")
         df_train = df_train[df_train[class_column] >= 0]
@@ -913,6 +927,8 @@ def load_spectra_data_regression(dataset, transform, n_samples=-1, device=None,
     data_path = utils.get_project_path() / '.data' / dataset / ('%s_full.csv' % dataset)
     metadata = load_metadata(dataset)
     df_train, df_valid, df_test = Spectra.get_by_split(data_path, columns=columns)
+    if n_samples > 0:
+        df_train, df_valid, df_test = sample_n(df_train, n_samples), sample_n(df_valid, n_samples), sample_n(df_train, n_samples)
     if target_column is not None and reject_novalue:
         print("Reject samples with 'no-value' assigned")
         df_train.dropna(subset=[target_column], inplace=True)

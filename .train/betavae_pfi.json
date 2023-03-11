@@ -5,15 +5,8 @@
     "parameters": {
         "--csv-filepath": {
             "--csv-filepath":       "--model-base-path",
-            "/home/krzyja/Workspace/SpecVAE/.model/HMDB/betavae_clf/experiment02.csv": "/home/krzyja/Workspace/SpecVAE/.model/HMDB/betavae_clf",
-            "/home/krzyja/Workspace/SpecVAE/.model/HMDB/betavae_reg/experiment01.csv": "/home/krzyja/Workspace/SpecVAE/.model/HMDB/betavae_reg",
-            "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_clf/experiment01.csv": "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_clf",
-            "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_clf/experiment02.csv": "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_clf",
-            "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_clf/experiment03.csv": "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_clf",
-            "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_clf/experiment04.csv": "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_clf",
-            "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_reg/experiment01.csv": "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_reg",
-            "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_reg/experiment02.csv": "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_reg",
-            "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_reg/experiment03.csv": "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_reg"
+            "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_clf/experiment.csv": "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_clf",
+            "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_reg/experiment.csv": "/home/krzyja/Workspace/SpecVAE/.model/MoNA/betavae_reg"
         },
         "--n-repeats": 10,
         "--n-samples": 10000,

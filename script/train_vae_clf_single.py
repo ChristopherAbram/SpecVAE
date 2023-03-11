@@ -116,9 +116,9 @@ def main(argc, argv):
                 df = pd.read_csv(filepath, index_col=False, error_bad_lines=False)
                 # Find configuration:
                 res = df[
-                    (df['target_column_id'].isin(          [target_column])) & 
-                    (df['input_columns'].isin(             [str(input_columns)])) & 
-                    (df['class_subset'].isin(              [str(class_subset)])) & 
+                    (df['clf_target_column_id'].isin(      [target_column])) & 
+                    # (df['input_columns'].isin(             [str(input_columns)])) & 
+                    # (df['class_subset'].isin(              [str(class_subset)])) & 
                     (df['param_max_num_peaks']          == max_num_peaks) & 
                     (df['param_min_intensity']          == min_intensity) & 
                     (df['param_rescale_intensity']      == rescale_intensity) & 
