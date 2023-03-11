@@ -1,6 +1,6 @@
 # SpecVAE
 
-<img src=".img/Figure_8.png" width="80%" style="display: block; margin: 0 auto; background: #fff;"/>
+<img src=".img/Figure_8.png" width="80%" style="display: block; margin: 0 auto; background-color: #fff;"/>
 
 ## Prerequisites
 - Ubuntu 18.04 or later,
